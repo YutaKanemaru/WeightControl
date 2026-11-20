@@ -43,7 +43,7 @@
 ## 現在の状態
 
 - 進み具合は `docs/ROADMAP.md` が正。作業を始める前に読み、PR でフェーズが進んだら更新する。
-- フェーズ 1・2・6・7 は画面まで完成。フェーズ 3〜5 はロジックとテストのみで、画面はこれから。
+- フェーズ 1〜7 は画面まで完成（フェーズ 3〜5 はホームタブ。`HomeDashboardBuilder` が既存ロジックをまとめる）。
 - ロジックの入力は `SwiftData` の型ではなく `WeightPoint` などの値の型を使う。カロリー計算の `BiologicalSex` / `ActivityLevel` は `UserProfile.Sex` / `UserProfile.ActivityLevel` とは別の型なので、画面側で変換する。
 
 ## テスト

@@ -7,6 +7,9 @@ import SwiftData
 struct MainTabView: View {
     var body: some View {
         TabView {
+            Tab("ホーム", systemImage: "house") {
+                HomeView()
+            }
             Tab("記録", systemImage: "list.bullet") {
                 WeightHistoryView()
             }
