@@ -18,28 +18,39 @@ struct ReminderSettingsSection: View {
 
     var body: some View {
         Section {
-            Toggle("記録のリマインド", isOn: enabledBinding)
-
-            if isEnabled {
-                DatePicker("お知らせする時刻", selection: timeBinding, displayedComponents: .hourAndMinute)
+            Toggle(isOn: enabledBinding) {
+                Label("記録のリマインド", systemImage: "bell")
             }
 
-            Toggle("ほめる通知", isOn: praiseEnabledBinding)
+            if isEnabled {
+                DatePicker(selection: timeBinding, displayedComponents: .hourAndMinute) {
+                    Label("お知らせする時刻", systemImage: "clock")
+                }
+            }
+
+            Toggle(isOn: praiseEnabledBinding) {
+                Label("ほめる通知", systemImage: "hands.clap")
+            }
 
             if isDenied {
-                Button("設定アプリで通知を許可する") {
+                Button {
                     if let url = URL(string: UIApplication.openNotificationSettingsURLString) {
                         openURL(url)
                     }
+                } label: {
+                    Label("設定アプリで通知を許可する", systemImage: "gear")
                 }
             }
         } header: {
             Text("通知")
         } footer: {
             if isDenied {
-                Text("iPhone の設定で、このアプリの通知が「許可しない」になっています。お知らせを受け取るには、設定アプリで許可してください。")
+                NoticeLabel("iPhone の設定で、このアプリの通知が「許可しない」になっています。お知らせを受け取るには、設定アプリで許可してください。", style: .caution)
             } else {
-                Text("記録のリマインド：毎日決まった時刻に、体重の記録をやさしくお知らせします。その日にもう記録していれば、お知らせはしません。\nほめる通知：毎週日曜の夜に 1 週間のふり返りを、連続記録や目標までの道のりの節目に届いた日の夜にお祝いをお届けします。")
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("記録のリマインド：毎日決まった時刻に、体重の記録をやさしくお知らせします。その日にもう記録していれば、お知らせはしません。")
+                    Text("ほめる通知：毎週日曜の夜に 1 週間のふり返りを、連続記録や目標までの道のりの節目に届いた日の夜にお祝いをお届けします。")
+                }
             }
         }
         // 表示したときと、設定アプリから戻ってきたとき（scenePhase が変わったとき）に許可の状態を確かめる
@@ -95,4 +106,12 @@ struct ReminderSettingsSection: View {
     List {
         ReminderSettingsSection()
     }
+}
+
+#Preview("大きい文字・ダークモード") {
+    List {
+        ReminderSettingsSection()
+    }
+    .dynamicTypeSize(.accessibility2)
+    .preferredColorScheme(.dark)
 }

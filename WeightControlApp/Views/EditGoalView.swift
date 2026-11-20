@@ -1,14 +1,18 @@
 import SwiftUI
 import SwiftData
 
-/// 設定画面から開く、目標の編集画面。目標がまだなければ新しく作ります。
+/// 設定画面（とホームの修正案）から開く、目標の編集画面。目標がまだなければ新しく作ります。
+///
+/// 入力中の目標が無理のないペースかを、その場で `GoalFormSections` がお知らせします。
+/// ペースの判定には、ホームと同じ「いまの体重の目安」（直近 3 週間の直線の今日の値）を使います。
 struct EditGoalView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
+    @Query(sort: \WeightEntry.date, order: .reverse) private var entries: [WeightEntry]
 
     /// 編集する目標。nil のときは新しく作る。
     let goal: WeightGoal?
-    /// いまの体重（いちばん新しい記録）。記録がなければ nil。
+    /// いまの体重（いちばん新しい記録）。目標の「スタート時の体重」として残す。記録がなければ nil。
     let currentWeightKg: Double?
 
     @State private var draft: GoalDraft
@@ -28,15 +32,17 @@ struct EditGoalView: View {
         Form {
             GoalFormSections(
                 draft: $draft,
-                currentWeightKg: currentWeightKg,
+                currentWeightKg: paceReferenceWeightKg,
                 targetWeightErrorMessage: targetWeightErrorMessage,
                 deadlineErrorMessage: deadlineErrorMessage
             )
 
             if goal != nil {
                 Section {
-                    Button("目標を削除", role: .destructive) {
+                    Button(role: .destructive) {
                         isConfirmingDelete = true
+                    } label: {
+                        Label("目標を削除", systemImage: "trash")
                     }
                 }
             }
@@ -56,6 +62,12 @@ struct EditGoalView: View {
         }
         .onChange(of: draft.targetWeightText) { targetWeightErrorMessage = nil }
         .onChange(of: draft.deadline) { deadlineErrorMessage = nil }
+    }
+
+    /// ペースの判定に使う体重：ホームと同じ「いまの体重の目安」。記録が少なくて出せなければ最新の記録。
+    private var paceReferenceWeightKg: Double? {
+        let points = entries.map { WeightPoint(date: $0.date, weightKg: $0.weightKg) }
+        return HomeDashboardBuilder.currentWeightEstimate(points: points) ?? currentWeightKg
     }
 
     private func save() {
@@ -100,4 +112,14 @@ struct EditGoalView: View {
         EditGoalView(goal: nil, currentWeightKg: 64.5)
     }
     .modelContainer(.preview(includesGoal: false))
+}
+
+#Preview("変更する・大きい文字・ダークモード") {
+    let goal = WeightGoal(targetWeightKg: 62.0, deadline: .now.addingTimeInterval(90 * 86_400), startWeightKg: 65.0)
+    NavigationStack {
+        EditGoalView(goal: goal, currentWeightKg: 64.5)
+    }
+    .modelContainer(.preview(includesGoal: false))
+    .dynamicTypeSize(.accessibility2)
+    .preferredColorScheme(.dark)
 }

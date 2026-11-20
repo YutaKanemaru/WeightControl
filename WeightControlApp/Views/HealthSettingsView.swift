@@ -23,15 +23,17 @@ struct HealthSettingsView: View {
                     activitySection(health)
                 }
             } else {
-                Section {
-                    Text("この端末ではヘルスケアを使えません。")
-                        .foregroundStyle(.secondary)
-                }
+                // 空の状態：ヘルスケアを使えない端末
+                ContentUnavailableView(
+                    "ヘルスケアを使えません",
+                    systemImage: "heart.slash",
+                    description: Text("この端末にはヘルスケアがありません。体重の記録やカレンダーは、このまま使えます。")
+                )
             }
 
             Section {
             } footer: {
-                Text("このアプリは医療アドバイスではありません。表示する数値は目安です。")
+                DisclaimerFooter()
             }
         }
         .navigationTitle("ヘルスケア連携")
@@ -42,7 +44,7 @@ struct HealthSettingsView: View {
 
     private func connectionSection(_ health: HealthSyncController) -> some View {
         Section {
-            Toggle("ヘルスケアと連携する", isOn: Binding(
+            Toggle(isOn: Binding(
                 get: { health.isEnabled },
                 set: { isOn in
                     if isOn {
@@ -51,12 +53,16 @@ struct HealthSettingsView: View {
                         health.disable()
                     }
                 }
-            ))
+            )) {
+                Label("ヘルスケアと連携する", systemImage: "heart.text.square")
+            }
             if health.isEnabled {
-                Toggle("体重をヘルスケアにも書き込む", isOn: Binding(
+                Toggle(isOn: Binding(
                     get: { health.writesWeightToHealth },
                     set: { health.writesWeightToHealth = $0 }
-                ))
+                )) {
+                    Label("体重をヘルスケアにも書き込む", systemImage: "square.and.arrow.down")
+                }
             }
         } footer: {
             Text("ヘルスケアの体重を取り込み、歩数・エクササイズ・ワークアウトから運動した日にスタンプを押します。データは端末の中だけで使い、外部には送りません。読み取る項目は「設定」アプリ →「ヘルスケア」→「データアクセスとデバイス」から変更できます。")
@@ -88,12 +94,10 @@ struct HealthSettingsView: View {
                     Text(date, format: .dateTime.hour().minute())
                 }
                 if importedCount > 0 {
-                    Text("体重の記録を \(importedCount) 件取り込みました。")
-                        .foregroundStyle(.secondary)
+                    NoticeLabel(text: Text("体重の記録を \(importedCount) 件取り込みました。"), style: .success)
                 }
             case .failed(let message):
-                Text(message)
-                    .foregroundStyle(.secondary)
+                NoticeLabel(text: Text(message), style: .caution)
             }
         }
     }
@@ -133,8 +137,7 @@ struct HealthSettingsView: View {
                     }
                 }
             } else {
-                Text("運動量のデータがまだ少ないため、目安を出せません。7 日分ほど集まると表示されます。")
-                    .foregroundStyle(.secondary)
+                NoticeLabel("運動量のデータがまだ少ないため、目安を出せません。7 日分ほど集まると表示されます。")
             }
         } header: {
             Text("直近 \(HealthSyncController.activitySummaryDays) 日の運動量")
@@ -167,4 +170,14 @@ struct HealthSettingsView: View {
     }
     .modelContainer(.preview())
     .environment(HealthSyncController())
+}
+
+#Preview("大きい文字・ダークモード") {
+    NavigationStack {
+        HealthSettingsView()
+    }
+    .modelContainer(.preview())
+    .environment(HealthSyncController())
+    .dynamicTypeSize(.accessibility2)
+    .preferredColorScheme(.dark)
 }
