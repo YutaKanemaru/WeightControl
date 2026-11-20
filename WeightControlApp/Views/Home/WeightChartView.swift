@@ -4,7 +4,7 @@ import Charts
 /// 体重のグラフ（Swift Charts）。
 ///
 /// - 点：実際に測った体重（1 日 1 点。同じ日に何回か測ったら平均）
-/// - 実線：トレンド（EMA でならした体重）
+/// - 実線：ならした流れ（EMA でならした体重。コードでは「トレンド」。画面では「トレンド」という言葉を使わない）
 /// - 点線：今のペースが続いた場合の予測（目標に届く日まで）
 /// - 横線：目標体重
 ///
@@ -60,7 +60,7 @@ struct WeightChartView: View {
                     LineMark(
                         x: .value("日付", point.date, unit: .day),
                         y: .value("体重", point.trendKg),
-                        series: .value("線", "トレンド")
+                        series: .value("線", "流れ")
                     )
                     .foregroundStyle(.blue)
                     .lineStyle(StrokeStyle(lineWidth: 2.5))
@@ -97,7 +97,7 @@ struct WeightChartView: View {
             legendItem("測った体重") {
                 Circle().fill(.gray.opacity(0.5)).frame(width: 7, height: 7)
             }
-            legendItem("トレンド") {
+            legendItem("ならした流れ") {
                 Capsule().fill(.blue).frame(width: 16, height: 3)
             }
             if !forecastLine.isEmpty {

@@ -67,6 +67,7 @@
 | `CalorieCalculator` | 基礎代謝（Mifflin-St Jeor 式）、1 日の消費カロリー、推奨摂取カロリー（下限つき） |
 | `GoalSafetyChecker` | 減量は週 1%、増量は週 0.5% を超えるペースなら、現実的な期限・目標を提案 |
 | `EnergyBalanceEstimator` | 体重の変化から、実際のカロリー収支を逆算 |
+| `EnergyExpenditureResolver` | 消費カロリーの計算方法を決める（自動：ヘルスケアに 7 日分以上の実績があればアクティブエネルギー、なければ活動係数。設定で手動選択も可） |
 | `Food/CalorieHintGenerator` | オーバーしたカロリーを「おにぎり 1 個分」のような身近な食べ物に言いかえる |
 | `Messages/PraiseMessageGenerator` | トレンド・連続記録日数・目標への進み具合から、ほめるメッセージを作る |
 
@@ -87,7 +88,7 @@
 
 ## 次にやること
 
-フェーズ 3〜7 がそろったので、ホームの推奨カロリーに、ヘルスケアのアクティブエネルギーから出した消費カロリー（`CalorieCalculator.totalDailyEnergyExpenditure(bmrKcal:averageActiveEnergyKcal:)`）を使えるようにする。
+ホームの推奨カロリーは、ヘルスケアに 7 日分以上の運動データがあれば実績（アクティブエネルギー）から計算するようになった（設定タブの「消費カロリー」で、自動・活動量・ヘルスケアの実績を選べる）。次はフェーズ 8 の残り（ほめる通知）と、フェーズ 9 の仕上げ。
 
 ## 動作確認用のデモデータ
 

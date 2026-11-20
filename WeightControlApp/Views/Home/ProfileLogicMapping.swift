@@ -34,13 +34,20 @@ extension UserProfile.ActivityLevel {
 }
 
 extension UserProfile {
+    /// 消費カロリーの計算方法。保存されている文字列から変換して返します（読めない値なら `.automatic`）。
+    var energyMode: EnergyExpenditureMode {
+        get { EnergyExpenditureMode(rawValue: energyModeRawValue) ?? .automatic }
+        set { energyModeRawValue = newValue.rawValue }
+    }
+
     /// ホーム画面の計算用の値
     var dashboardProfile: DashboardProfile {
         DashboardProfile(
             heightCm: heightCm,
             birthYear: birthYear,
             sex: sex.biologicalSex,
-            activityLevel: activityLevel.calculatorLevel
+            activityLevel: activityLevel.calculatorLevel,
+            energyMode: energyMode
         )
     }
 }

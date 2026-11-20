@@ -12,6 +12,7 @@ struct SettingsView: View {
         NavigationStack {
             List {
                 profileSection
+                energySection
                 goalSection
                 healthSection
                 ReminderSettingsSection()
@@ -50,6 +51,20 @@ struct SettingsView: View {
                 NavigationLink("プロフィールを編集") {
                     EditProfileView(profile: profile)
                 }
+            }
+        }
+    }
+
+    /// 消費カロリーの計算方法（ホームの「1 日の摂取カロリーの目安」に使う）
+    @ViewBuilder
+    private var energySection: some View {
+        if let profile = profiles.first {
+            Section {
+                EnergyModePicker(profile: profile)
+            } header: {
+                Text("消費カロリー")
+            } footer: {
+                Text(profile.energyMode.detail)
             }
         }
     }
