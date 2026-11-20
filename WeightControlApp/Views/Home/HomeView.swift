@@ -15,9 +15,6 @@ struct HomeView: View {
     /// 目標は 1 件だけの想定。念のため新しい順に並べて先頭を使う。
     @Query(sort: \WeightGoal.startDate, order: .reverse) private var goals: [WeightGoal]
 
-    /// ヘルスケア連携の係。連携していて運動データがあれば、消費カロリーの計算に実績を使う。
-    @Environment(HealthSyncController.self) private var health: HealthSyncController?
-
     @State private var isShowingAddSheet = false
 
     /// 食品カロリー表（アプリに同梱の JSON）。一度だけ読み込む。読めなければ空にして、ヒントを出さないだけにする。
@@ -30,7 +27,6 @@ struct HomeView: View {
             profile: profiles.first?.dashboardProfile,
             goal: goal?.dashboardGoal,
             foods: Self.foods,
-            healthActivity: health?.activitySummary,
             now: .now
         )
 
@@ -60,7 +56,7 @@ struct HomeView: View {
                     }
 
                     if let intake = dashboard.intake {
-                        IntakeCard(intake: intake, energyChoice: dashboard.energyChoice)
+                        IntakeCard(intake: intake)
                     }
 
                     if let phrase = dashboard.calorieHint?.foodPhrase, let overPlan = dashboard.overPlanKcalPerDay {
@@ -97,14 +93,14 @@ struct HomeView: View {
         }
     }
 
-    /// いまの体重・目標まで、をひと目で
-    ///
-    /// トレンド体重（ならした体重）の数字は出しません。測った体重と違う数字が並ぶと、どちらを見ればよいか迷うためです。
-    /// ただし「目標まで」は、日によって増えたり減ったりしないよう、中の計算ではトレンド体重を使います。
+    /// いまの体重・トレンド・目標まで、をひと目で
     private func summary(dashboard: HomeDashboard, goal: WeightGoal?) -> some View {
         HStack(alignment: .top) {
             if let latest = entries.first {
                 summaryItem("最新の体重", kg: latest.weightKg)
+            }
+            if let trendKg = dashboard.currentTrendKg {
+                summaryItem("トレンド", kg: trendKg)
             }
             if let goal, let trendKg = dashboard.currentTrendKg {
                 summaryItem("目標まで", kg: abs(goal.targetWeightKg - trendKg))

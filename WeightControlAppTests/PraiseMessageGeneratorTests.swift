@@ -46,7 +46,7 @@ struct PraiseMessageGeneratorTests {
         let input = PraiseInput(trendChangeKg: -0.54, streakDays: 5)
         let message = PraiseMessageGenerator.primaryMessage(for: input)
         #expect(message.kind == .trendTowardGoal(changeKg: -0.54))
-        #expect(message.text == "この1週間の流れで0.5kg下がっています。いい調子です！")
+        #expect(message.text == "トレンドが0.5kg下がっています。いい調子です！")
         #expect(kinds(input) == [.trendTowardGoal(changeKg: -0.54), .streak(days: 5)])
     }
 
@@ -55,7 +55,7 @@ struct PraiseMessageGeneratorTests {
         let input = PraiseInput(trendChangeKg: 0.8, streakDays: 2, goalDirection: .gain)
         let message = PraiseMessageGenerator.primaryMessage(for: input)
         #expect(message.kind == .trendTowardGoal(changeKg: 0.8))
-        #expect(message.text == "この1週間の流れで0.8kg上がっています。いい調子です！")
+        #expect(message.text == "トレンドが0.8kg上がっています。いい調子です！")
     }
 
     @Test("変化が小さければ「安定しています」", arguments: [-0.19, 0, 0.19])

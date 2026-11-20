@@ -145,40 +145,18 @@ struct ForecastCard: View {
 
 struct IntakeCard: View {
     let intake: IntakeRecommendation
-    /// 消費カロリーをどう計算したか（説明文を変えるため）
-    var energyChoice: EnergyExpenditureChoice?
 
     var body: some View {
         DashboardCard(title: "1 日の摂取カロリーの目安", systemImage: "fork.knife") {
             Text("\(Int(intake.targetKcal.rounded())) kcal")
                 .font(.largeTitle.bold().monospacedDigit())
-            Text("消費カロリーの目安 \(Int(intake.tdeeKcal.rounded())) kcal")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-            sourceText
+            Text("消費カロリーの目安 \(Int(intake.tdeeKcal.rounded())) kcal（基礎代謝と活動量から計算）")
                 .font(.caption)
                 .foregroundStyle(.secondary)
             if intake.isRaisedToMinimum {
                 Label("体のために、これより少なくしないよう下限に合わせています。そのぶん、目標のペースより少しゆっくりになります。", systemImage: "info.circle")
                     .font(.caption)
                     .foregroundStyle(.secondary)
-            }
-        }
-    }
-}
-
-extension IntakeCard {
-    /// 消費カロリーを何から計算したかの説明
-    @ViewBuilder
-    fileprivate var sourceText: some View {
-        switch energyChoice?.source {
-        case .healthKit(let averageActiveEnergyKcal, let days)?:
-            Text("（基礎代謝と、ヘルスケアの実績：直近 \(days) 日の平均アクティブエネルギー \(Int(averageActiveEnergyKcal.rounded())) kcal から計算）")
-        case .activityLevel?, nil:
-            if energyChoice?.isFallback == true {
-                Text("（基礎代謝と活動量から計算。ヘルスケアの運動データが 7 日分たまると、実績で計算します）")
-            } else {
-                Text("（基礎代謝と活動量から計算）")
             }
         }
     }
