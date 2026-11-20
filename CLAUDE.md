@@ -1,0 +1,51 @@
+# CLAUDE.md
+
+このファイルは、AI アシスタント（Claude）がこのリポジトリで作業するときのルールです。人間の開発者が読んでも分かるように書いています。
+
+## プロジェクト概要
+
+体重管理 iOS アプリ（SwiftUI + SwiftData）。詳細な機能は README.md を参照。
+
+## コミュニケーション
+
+- 開発者は iOS 開発の初心者。説明・PR 本文・コミットの説明は**日本語**で、「なぜそうするのか」「どう動くのか」を添える。
+- 専門用語は初出時に一言で説明する。
+
+## 技術方針
+
+- **Apple 純正フレームワークのみ**（SwiftUI / SwiftData / HealthKit / UserNotifications / Swift Charts / WidgetKit / WatchKit）。外部ライブラリは相談なしに追加しない。
+- データは**端末内のみ**（SwiftData）。外部サーバーへの送信はしない。
+- 対応 OS は `IPHONEOS_DEPLOYMENT_TARGET` に従う（現在 iOS 26.0）。iOS 27 で追加された API を使うときは `if #available(iOS 27, *)` で分岐する。
+- プロジェクトファイルは Xcode のフォルダ同期方式（`project.xcproj`）。`WeightControlApp/` 配下にファイルを置けば自動でターゲットに入るので、ファイル追加のためにプロジェクトファイルを編集する必要はない。
+- 既定のアクター分離は `MainActor`（`SWIFT_DEFAULT_ACTOR_ISOLATION`）。重い計算を別スレッドで行う場合は `nonisolated` や `@concurrent` を明示する。
+
+## フォルダの役割
+
+| フォルダ | 置くもの | ルール |
+|---|---|---|
+| `WeightControlApp/App/` | `@main` のアプリ本体、ModelContainer の設定 | 小さく保つ |
+| `WeightControlApp/Models/` | `@Model` のデータ型 | 保存する「形」だけ。計算は Logic へ |
+| `WeightControlApp/Views/` | SwiftUI の画面・部品 | 計算ロジックを直接書かない |
+| `WeightControlApp/Logic/` | 予測（EMA・線形回帰）、カロリー計算（Mifflin-St Jeor）、メッセージ生成など | **SwiftUI / SwiftData に依存しない純粋な関数・struct**。必ずテストを書く |
+| `WeightControlAppTests/` | Swift Testing の単体テスト | `Logic/` のテストが中心 |
+| `WeightControlAppUITests/` | XCTest の UI テスト | 主要な画面遷移だけ |
+
+## コーディング規約
+
+- Swift API Design Guidelines に従う。型は `UpperCamelCase`、変数・関数は `lowerCamelCase`。
+- 体重は `Double`（kg）、日付は `Date`。単位を変数名かコメントで明示する（例: `weightKg`）。
+- ユーザー向けの文言は日本語。String Catalog（`Localizable.xcstrings`）で管理する。
+- メッセージは「ほめる」を優先し、責める表現を使わない。
+- 医療的な断定をしない。必要な画面には「医療アドバイスではありません」の免責表示を出す。
+
+## テスト
+
+- テストフレームワークは **Swift Testing**（`import Testing`、`@Test`、`#expect`）。
+- `Logic/` に関数を追加・変更したら、同じ PR でテストを追加・更新する。
+- ローカルでは Xcode の `⌘U`、CI では `xcodebuild test`（`.github/workflows/ci.yml`）。
+
+## Git の運用
+
+- `main` に直接 push しない。作業ブランチ（例: `feature/weight-entry`、`fix/graph-crash`）を切って PR を出す。
+- コミットは小さく、メッセージは何をしたかが分かるように書く。
+- `xcuserdata/` などの個人設定はコミットしない（`.gitignore` 済み）。

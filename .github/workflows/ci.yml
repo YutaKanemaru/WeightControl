@@ -1,0 +1,50 @@
+# GitHub Actions: PR や main への push のたびに、GitHub の Mac 上で
+# アプリをビルドして単体テストを実行します。
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch: # GitHub の画面から手動でも実行できるようにする
+
+# 同じブランチで新しい push があったら、古い実行は止める（無駄を減らす）
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-test:
+    # macos-latest には Xcode 26 までしか入っていないため、Xcode 27 専用イメージを使う
+    # （このプロジェクトは Xcode 27 の新しいプロジェクト形式で作られている）
+    runs-on: xcode-27
+    timeout-minutes: 30
+    steps:
+      - name: リポジトリを取得
+        uses: actions/checkout@v4
+
+      - name: いちばん新しい Xcode を選ぶ
+        run: |
+          ls -d /Applications/Xcode*.app
+          XCODE=$(ls -d /Applications/Xcode_*.app 2>/dev/null | sort -V | tail -1)
+          if [ -n "$XCODE" ]; then
+            echo "使用する Xcode: $XCODE"
+            sudo xcode-select -s "$XCODE/Contents/Developer"
+          fi
+          xcodebuild -version
+
+      - name: テスト用の iPhone シミュレーターを選ぶ
+        id: sim
+        run: |
+          UDID=$(xcrun simctl list devices available -j \
+            | python3 -c 'import json,sys; d=json.load(sys.stdin)["devices"]; print(next(x["udid"] for r in sorted(d, reverse=True) if "iOS" in r for x in d[r] if x["name"].startswith("iPhone")))')
+          echo "udid=$UDID" >> "$GITHUB_OUTPUT"
+
+      - name: ビルドして単体テストを実行
+        run: |
+          xcodebuild test \
+            -project WeightControlApp.xcodeproj \
+            -scheme WeightControlApp \
+            -destination "id=${{ steps.sim.outputs.udid }}" \
+            -only-testing:WeightControlAppTests \
+            CODE_SIGNING_ALLOWED=NO
