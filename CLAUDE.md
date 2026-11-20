@@ -26,9 +26,9 @@
 | `WeightControlApp/App/` | `@main` のアプリ本体、ModelContainer の設定 | 小さく保つ |
 | `WeightControlApp/Models/` | `@Model` のデータ型 | 保存する「形」だけ。計算は Logic へ |
 | `WeightControlApp/Views/` | SwiftUI の画面・部品 | 計算ロジックを直接書かない |
-| `WeightControlApp/Logic/` | 予測（EMA・線形回帰）、カロリー計算（Mifflin-St Jeor）、メッセージ生成など。`Food/`・`Messages/` のサブフォルダあり | **SwiftUI / SwiftData に依存しない純粋な関数・struct**（`nonisolated` を付ける）。必ずテストを書く |
+| `WeightControlApp/Logic/` | 予測（EMA・線形回帰）、カロリー計算（Mifflin-St Jeor）、メッセージ生成など。`Food/`・`Messages/`・`Calendar/`・`Health/`・`Reminders/` のサブフォルダあり | **SwiftUI / SwiftData に依存しない純粋な関数・struct**（`nonisolated` を付ける）。必ずテストを書く |
+| `WeightControlApp/Services/` | HealthKit・通知（UserNotifications）など、外の仕組みとやり取りする窓口と、その結果を SwiftData に反映する係 | 外の型（`HKQuantitySample` など）はここで値の型に変換し、判断のルールは `Logic/` に置いてテストする |
 | `WeightControlApp/Resources/` | アプリに同梱するデータ（`FoodCalories.json`） | 数値の修正はコードではなく JSON で |
-| `WeightControlApp/Notifications/` | 通知（UserNotifications）の登録・削除と、その設定のキー | 「いつ・何を通知するか」は `Logic/Reminders/` で決め、ここは登録するだけ |
 | `WeightControlAppTests/` | Swift Testing の単体テスト | `Logic/` のテストが中心 |
 | `WeightControlAppUITests/` | XCTest の UI テスト | 主要な画面遷移だけ |
 
@@ -43,7 +43,7 @@
 ## 現在の状態
 
 - 進み具合は `docs/ROADMAP.md` が正。作業を始める前に読み、PR でフェーズが進んだら更新する。
-- フェーズ 1・2 は画面まで完成。フェーズ 3〜5 はロジックとテストのみで、画面はこれから。
+- フェーズ 1・2・6・7 は画面まで完成、フェーズ 8 は記録のリマインド通知まで。フェーズ 3〜5 はロジックとテストのみで、画面はこれから。
 - ロジックの入力は `SwiftData` の型ではなく `WeightPoint` などの値の型を使う。カロリー計算の `BiologicalSex` / `ActivityLevel` は `UserProfile.Sex` / `UserProfile.ActivityLevel` とは別の型なので、画面側で変換する。
 
 ## テスト
