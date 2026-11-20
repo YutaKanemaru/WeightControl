@@ -19,7 +19,9 @@ struct EditGoalView: View {
     init(goal: WeightGoal?, currentWeightKg: Double?) {
         self.goal = goal
         self.currentWeightKg = currentWeightKg
-        _draft = State(initialValue: goal.map(GoalDraft.init(goal:)) ?? GoalDraft())
+        // `goal.map(GoalDraft.init(goal:))` と書くと、メインスレッド専用の init を
+        // 「どのスレッドからでも呼べる関数」として渡すことになり警告が出るため、クロージャ { } で包んで呼ぶ
+        _draft = State(initialValue: goal.map { GoalDraft(goal: $0) } ?? GoalDraft())
     }
 
     var body: some View {
