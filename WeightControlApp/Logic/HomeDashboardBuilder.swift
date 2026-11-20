@@ -213,6 +213,17 @@ nonisolated enum HomeDashboardBuilder {
         return latest.trendKg - baseline.trendKg
     }
 
+    /// 今の体重の目安（kg）。直近 3 週間の直線（`GoalForecaster.paceEstimate`）が引ければその今日の値、なければならした体重の最新の値。
+    /// 記録がなければ nil。ほめる通知（`PraiseNotificationPlanner`）でも同じ考え方を使います。
+    ///
+    /// - Parameter trend: すでに計算したトレンドがあれば渡す（二度計算しないため）。nil ならここで計算します。
+    static func currentWeightEstimate(points: [WeightPoint], trend: [TrendPoint]? = nil, calendar: Calendar = .current) -> Double? {
+        if let pace = GoalForecaster.paceEstimate(points: points, calendar: calendar) {
+            return pace.currentWeightKg
+        }
+        return (trend ?? WeightTrendCalculator.trend(points, calendar: calendar)).last?.trendKg
+    }
+
     /// 目標の向き（減らす・増やす・キープ）
     static func goalDirection(startKg: Double, targetKg: Double) -> GoalDirection {
         let diff = targetKg - startKg
