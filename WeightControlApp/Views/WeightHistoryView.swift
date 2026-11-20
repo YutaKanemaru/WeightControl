@@ -9,6 +9,8 @@ import SwiftData
 struct WeightHistoryView: View {
     /// 保存・削除の窓口。アプリ全体で 1 つの「データベースへの接続」を共有しています。
     @Environment(\.modelContext) private var modelContext
+    /// ヘルスケア連携の係（プレビューなどで渡されていないときは nil）
+    @Environment(HealthSyncController.self) private var health: HealthSyncController?
 
     /// 体重の記録を「日付の新しい順」で取り出す。
     @Query(sort: \WeightEntry.date, order: .reverse) private var entries: [WeightEntry]
@@ -79,6 +81,8 @@ struct WeightHistoryView: View {
     private func deleteEntries(at offsets: IndexSet) {
         withAnimation {
             for index in offsets {
+                // このアプリがヘルスケアに書き込んだ記録なら、ヘルスケアからも消す
+                health?.removeFromHealthIfNeeded(entries[index])
                 modelContext.delete(entries[index])
             }
         }
@@ -95,9 +99,16 @@ struct WeightEntryRow: View {
         HStack {
             VStack(alignment: .leading, spacing: 2) {
                 Text(entry.date, format: .dateTime.year().month().day().weekday())
-                Text(entry.date, format: .dateTime.hour().minute())
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                HStack(spacing: 4) {
+                    Text(entry.date, format: .dateTime.hour().minute())
+                    if entry.importedFromHealthKit {
+                        Image(systemName: "heart.fill")
+                            .foregroundStyle(.pink)
+                            .accessibilityLabel("ヘルスケアから取り込み")
+                    }
+                }
+                .font(.caption)
+                .foregroundStyle(.secondary)
             }
 
             Spacer()

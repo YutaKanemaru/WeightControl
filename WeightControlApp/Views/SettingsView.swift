@@ -13,6 +13,7 @@ struct SettingsView: View {
             List {
                 profileSection
                 goalSection
+                healthSection
 
                 Section {
                 } footer: {
@@ -43,6 +44,16 @@ struct SettingsView: View {
                 NavigationLink("プロフィールを編集") {
                     EditProfileView(profile: profile)
                 }
+            }
+        }
+    }
+
+    private var healthSection: some View {
+        Section("連携") {
+            NavigationLink {
+                HealthSettingsView()
+            } label: {
+                Label("Apple ヘルスケア", systemImage: "heart.fill")
             }
         }
     }
