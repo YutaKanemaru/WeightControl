@@ -72,8 +72,7 @@ nonisolated enum HomeDashboardBuilder {
     ) -> HomeDashboard {
         let trend = WeightTrendCalculator.trend(points, calendar: calendar)
         // 今の体重の目安：直線（記録 7 日以上）があればその今日の値、なければならした体重
-        let currentKg = GoalForecaster.paceEstimate(points: points, calendar: calendar)?.currentWeightKg
-            ?? trend.last?.trendKg
+        let currentKg = currentWeightEstimate(points: points, trend: trend, calendar: calendar)
         let streak = WeighInStreakCalculator.currentStreak(dates: points.map(\.date), today: now, calendar: calendar)
 
         // 目標の向きと進み具合
@@ -201,6 +200,17 @@ nonisolated enum HomeDashboardBuilder {
             DayMath.days(from: $0.date, to: latest.date, calendar: calendar) >= days
         }) else { return nil }
         return latest.trendKg - baseline.trendKg
+    }
+
+    /// 今の体重の目安（kg）。記録が 7 日以上あれば直近 3 週間の直線の今日の値、なければならした体重の最新の値。
+    /// 記録がなければ nil。ほめる通知（`PraiseNotificationPlanner`）でも同じ考え方を使います。
+    ///
+    /// - Parameter trend: すでに計算したトレンドがあれば渡す（二度計算しないため）。nil ならここで計算します。
+    static func currentWeightEstimate(points: [WeightPoint], trend: [TrendPoint]? = nil, calendar: Calendar = .current) -> Double? {
+        if let pace = GoalForecaster.paceEstimate(points: points, calendar: calendar) {
+            return pace.currentWeightKg
+        }
+        return (trend ?? WeightTrendCalculator.trend(points, calendar: calendar)).last?.trendKg
     }
 
     /// 目標の向き（減らす・増やす・キープ）
