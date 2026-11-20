@@ -1,0 +1,33 @@
+# ============================================
+# Xcode / Swift 用 .gitignore
+# 「Gitで管理しない（GitHubに上げない）ファイル」の一覧です。
+# ============================================
+
+# --- macOS が勝手に作るファイル ---
+.DS_Store
+
+# --- Xcode の個人設定（人ごと・Macごとに違うので共有しない） ---
+# 開いているタブ、ブレークポイント、スキームの並び順など
+xcuserdata/
+*.xcuserstate
+*.xcscmblueprint
+*.xccheckout
+
+# --- ビルド成果物（いつでも作り直せるので不要） ---
+build/
+DerivedData/
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+# --- Swift Package Manager ---
+.build/
+.swiftpm/
+# 依存パッケージを追加したら Package.resolved は「共有する」のが一般的なので除外しません
+
+# --- テスト結果 ---
+*.xcresult
+
+# --- 秘密情報（絶対に GitHub に上げない） ---
+*.env
+Secrets.xcconfig
