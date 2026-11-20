@@ -28,6 +28,8 @@ struct RootView: View {
                 await health.sync(context: modelContext)
             }
         }
+        // 記録や通知の設定が変わったら、リマインド通知を作り直す
+        .weighInReminderSync()
     }
 }
 
