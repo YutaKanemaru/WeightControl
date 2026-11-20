@@ -10,9 +10,11 @@ import SwiftData
 
 @main
 struct WeightControlAppApp: App {
+    /// アプリ全体で使うデータベース（SwiftData の ModelContainer）。
+    /// ここに登録した @Model の型が、端末内に保存されるようになります。
     var sharedModelContainer: ModelContainer = {
         let schema = Schema([
-            Item.self,
+            WeightEntry.self,
         ])
         let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
 
