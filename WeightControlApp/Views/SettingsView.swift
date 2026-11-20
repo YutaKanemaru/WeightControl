@@ -1,7 +1,7 @@
 import SwiftUI
 import SwiftData
 
-/// 「設定」タブの画面：プロフィールと目標の確認・変更。
+/// 「設定」タブの画面：プロフィールと目標の確認・変更、記録のリマインド通知。
 struct SettingsView: View {
     @Query private var profiles: [UserProfile]
     /// 目標は 1 件だけの想定。念のため新しい順に並べて先頭を使う。
@@ -13,6 +13,7 @@ struct SettingsView: View {
             List {
                 profileSection
                 goalSection
+                ReminderSettingsSection()
 
                 Section {
                 } footer: {

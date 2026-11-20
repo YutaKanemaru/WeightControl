@@ -18,6 +18,8 @@ struct RootView: View {
             }
         }
         .animation(.default, value: profiles.isEmpty)
+        // 記録や通知の設定が変わったら、リマインド通知を作り直す
+        .weighInReminderSync()
     }
 }
 

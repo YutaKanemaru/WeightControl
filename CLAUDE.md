@@ -28,6 +28,7 @@
 | `WeightControlApp/Views/` | SwiftUI の画面・部品 | 計算ロジックを直接書かない |
 | `WeightControlApp/Logic/` | 予測（EMA・線形回帰）、カロリー計算（Mifflin-St Jeor）、メッセージ生成など。`Food/`・`Messages/` のサブフォルダあり | **SwiftUI / SwiftData に依存しない純粋な関数・struct**（`nonisolated` を付ける）。必ずテストを書く |
 | `WeightControlApp/Resources/` | アプリに同梱するデータ（`FoodCalories.json`） | 数値の修正はコードではなく JSON で |
+| `WeightControlApp/Notifications/` | 通知（UserNotifications）の登録・削除と、その設定のキー | 「いつ・何を通知するか」は `Logic/Reminders/` で決め、ここは登録するだけ |
 | `WeightControlAppTests/` | Swift Testing の単体テスト | `Logic/` のテストが中心 |
 | `WeightControlAppUITests/` | XCTest の UI テスト | 主要な画面遷移だけ |
 
