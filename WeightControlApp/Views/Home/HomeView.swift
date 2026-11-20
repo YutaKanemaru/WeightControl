@@ -89,7 +89,7 @@ struct HomeView: View {
                 }
             }
             .sheet(isPresented: $isShowingAddSheet) {
-                AddWeightEntryView(lastWeightKg: entries.first?.weightKg)
+                AddWeightEntryView(lastWeightKg: entries.first?.weightKg, lastEntryDate: entries.first?.date)
             }
         }
     }
