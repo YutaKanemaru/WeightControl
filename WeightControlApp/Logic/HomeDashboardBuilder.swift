@@ -6,6 +6,8 @@ nonisolated struct DashboardProfile: Equatable, Sendable {
     var birthYear: Int
     var sex: BiologicalSex
     var activityLevel: ActivityLevel
+    /// 消費カロリーを何から計算するか（既定は自動：ヘルスケアの実績があれば実績、なければ活動量）
+    var energyMode: EnergyExpenditureMode = .automatic
 }
 
 /// ホーム画面の計算に使う目標（保存データ `WeightGoal` から画面側で変換して渡します）。
@@ -36,6 +38,8 @@ nonisolated struct HomeDashboard: Equatable, Sendable {
     var safety: GoalSafetyResult?
     /// 1 日の摂取カロリーの目安。プロフィールか記録がなければ nil。
     var intake: IntakeRecommendation?
+    /// 摂取カロリーの目安で使った、消費カロリーの計算方法。プロフィールか記録がなければ nil。
+    var energyChoice: EnergyExpenditureChoice?
     /// 体重が計画どおりに減っていないとき、計画より 1 日あたり何 kcal 多いかの目安。
     /// 判断できない（記録が 14 日未満など）か、計画どおりなら nil。
     var overPlanKcalPerDay: Double?
@@ -59,6 +63,7 @@ nonisolated enum HomeDashboardBuilder {
         profile: DashboardProfile?,
         goal: DashboardGoal?,
         foods: [FoodItem],
+        healthActivity: ActivitySummary? = nil,
         now: Date,
         calendar: Calendar = .current
     ) -> HomeDashboard {
@@ -122,6 +127,7 @@ nonisolated enum HomeDashboardBuilder {
 
         // 1 日の摂取カロリーの目安
         var intake: IntakeRecommendation?
+        var energyChoice: EnergyExpenditureChoice?
         if let profile, let currentKg {
             let bmr = CalorieCalculator.basalMetabolicRate(
                 weightKg: currentKg,
@@ -129,7 +135,14 @@ nonisolated enum HomeDashboardBuilder {
                 ageYears: CalorieCalculator.ageYears(birthYear: profile.birthYear, on: now, calendar: calendar),
                 sex: profile.sex
             )
-            let tdee = CalorieCalculator.totalDailyEnergyExpenditure(bmrKcal: bmr, activityLevel: profile.activityLevel)
+            // 消費カロリーは、設定に合わせて「活動係数」か「ヘルスケアの実績」で計算する
+            let choice = EnergyExpenditureResolver.choose(
+                mode: profile.energyMode,
+                activityLevel: profile.activityLevel,
+                healthActivity: healthActivity
+            )
+            energyChoice = choice
+            let tdee = EnergyExpenditureResolver.totalDailyEnergyExpenditure(bmrKcal: bmr, source: choice.source)
             intake = CalorieCalculator.recommendedIntake(
                 tdeeKcal: tdee,
                 bmrKcal: bmr,
@@ -168,6 +181,7 @@ nonisolated enum HomeDashboardBuilder {
             forecastLine: forecastLine,
             safety: safety,
             intake: intake,
+            energyChoice: energyChoice,
             overPlanKcalPerDay: overPlan,
             calorieHint: hint
         )

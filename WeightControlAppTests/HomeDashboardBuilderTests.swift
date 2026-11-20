@@ -69,6 +69,36 @@ struct HomeDashboardBuilderTests {
         #expect(dashboard.intake == nil)
     }
 
+    @Test("ヘルスケアの実績があれば（自動）、消費カロリーは（基礎代謝 ＋ アクティブエネルギー）÷ 0.9 で計算する")
+    func usesHealthActivityAutomatically() throws {
+        let activity = ActivitySummary(dayCount: 10, averageSteps: 9000, averageActiveEnergyKcal: 450,
+                                       averageActiveMinutes: 40, suggestedLevel: .moderate)
+        let dashboard = HomeDashboardBuilder.build(
+            points: points(days: 5) { _ in 70 }, profile: profile, goal: nil, foods: foods,
+            healthActivity: activity, now: day(4), calendar: calendar
+        )
+        let bmr = CalorieCalculator.basalMetabolicRate(weightKg: 70, heightCm: 170, ageYears: 37, sex: .male)
+        let intake = try #require(dashboard.intake)
+        #expect(isApproximately(intake.tdeeKcal, (bmr + 450) / 0.9, tolerance: 1e-6))
+        #expect(dashboard.energyChoice?.source == .healthKit(averageActiveEnergyKcal: 450, days: 10))
+    }
+
+    @Test("活動量を選んでいれば、ヘルスケアの実績があっても 基礎代謝 × 活動係数 で計算する")
+    func activityLevelModeIgnoresHealth() throws {
+        let activity = ActivitySummary(dayCount: 10, averageSteps: 9000, averageActiveEnergyKcal: 450,
+                                       averageActiveMinutes: 40, suggestedLevel: .moderate)
+        var manual = profile
+        manual.energyMode = .activityLevel
+        let dashboard = HomeDashboardBuilder.build(
+            points: points(days: 5) { _ in 70 }, profile: manual, goal: nil, foods: foods,
+            healthActivity: activity, now: day(4), calendar: calendar
+        )
+        let bmr = CalorieCalculator.basalMetabolicRate(weightKg: 70, heightCm: 170, ageYears: 37, sex: .male)
+        let intake = try #require(dashboard.intake)
+        #expect(isApproximately(intake.tdeeKcal, bmr * ActivityLevel.sedentary.factor, tolerance: 1e-6))
+        #expect(dashboard.energyChoice?.source == .activityLevel(.sedentary))
+    }
+
     // MARK: - 予測とグラフ
 
     @Test("順調に減っていれば予測線が目標体重で終わり、食べ物ヒントは出ない")

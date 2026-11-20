@@ -15,6 +15,9 @@ struct HomeView: View {
     /// 目標は 1 件だけの想定。念のため新しい順に並べて先頭を使う。
     @Query(sort: \WeightGoal.startDate, order: .reverse) private var goals: [WeightGoal]
 
+    /// ヘルスケア連携の係。連携していて運動データがあれば、消費カロリーの計算に実績を使う。
+    @Environment(HealthSyncController.self) private var health: HealthSyncController?
+
     @State private var isShowingAddSheet = false
 
     /// 食品カロリー表（アプリに同梱の JSON）。一度だけ読み込む。読めなければ空にして、ヒントを出さないだけにする。
@@ -27,6 +30,7 @@ struct HomeView: View {
             profile: profiles.first?.dashboardProfile,
             goal: goal?.dashboardGoal,
             foods: Self.foods,
+            healthActivity: health?.activitySummary,
             now: .now
         )
 
@@ -56,7 +60,7 @@ struct HomeView: View {
                     }
 
                     if let intake = dashboard.intake {
-                        IntakeCard(intake: intake)
+                        IntakeCard(intake: intake, energyChoice: dashboard.energyChoice)
                     }
 
                     if let phrase = dashboard.calorieHint?.foodPhrase, let overPlan = dashboard.overPlanKcalPerDay {

@@ -20,6 +20,9 @@ final class UserProfile {
     var activityLevelRawValue: String
     /// 最後に更新した日時
     var updatedAt: Date
+    /// 1 日の消費カロリーを何から計算するか（Logic の `EnergyExpenditureMode` の rawValue）。
+    /// 後から追加した列ですが、既定値（"automatic"）があるので、保存済みのプロフィールは自動で「自動」として読み込まれます。
+    var energyModeRawValue: String = "automatic"
 
     init(
         heightCm: Double,

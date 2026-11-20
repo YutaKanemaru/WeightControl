@@ -84,6 +84,8 @@ enum DemoDataLoader {
             current.birthYear = profile.birthYear
             current.sex = sex
             current.activityLevel = activity
+            // 計算方法は「自動」にそろえる（ヘルスケア連携がオフなら活動量で計算され、資料の値と一致する）
+            current.energyMode = .automatic
             current.updatedAt = .now
             existingProfiles.dropFirst().forEach { context.delete($0) }
         } else {
