@@ -18,6 +18,7 @@ struct WeightControlAppApp: App {
             WeightEntry.self,
             UserProfile.self,
             WeightGoal.self,
+            ExerciseDay.self,
         ])
         let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
 

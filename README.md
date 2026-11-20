@@ -20,7 +20,7 @@
 | 無理な目標のときに、現実的な期限・目標を提案 | 🧮 |
 | 「ほめる」を優先したメッセージ | 🧮 |
 | 食べ物ベースのカロリーオーバーのヒント（40 品目の食品表） | 🧮 |
-| カレンダー（運動した日・体重を測った日にスタンプ） | ⬜ |
+| カレンダー（運動した日・体重を測った日にスタンプ、連続記録日数） | ✅ |
 | HealthKit 連携 | ⬜ |
 | 通知 | ⬜ |
 | Apple Watch 対応 | ⬜ |
@@ -51,7 +51,8 @@ WeightControl/                    ← リポジトリのルート
 │   ├── Views/                    ← 画面（SwiftUI の View）
 │   ├── Logic/                    ← 計算ロジック（予測・カロリー計算など。画面に依存しない）
 │   │   ├── Food/                 ← 食品表の読み込み、食べ物ヒント
-│   │   └── Messages/             ← ほめるメッセージ、連続記録日数
+│   │   ├── Messages/             ← ほめるメッセージ、連続記録日数
+│   │   └── Calendar/             ← カレンダーのマス目、スタンプの集計
 │   ├── Resources/                ← アプリに同梱するデータ（FoodCalories.json：食品のカロリー表）
 │   ├── Localizable.xcstrings     ← 画面の文言の一覧（String Catalog）
 │   └── Assets.xcassets           ← アイコン・色・画像
@@ -76,6 +77,7 @@ WeightControl/                    ← リポジトリのルート
 | `WeightEntry` | 体重（kg）と記録日時 |
 | `UserProfile` | 身長（cm）、生まれた年、性別、活動量 |
 | `WeightGoal` | 目標体重（kg）、期限、開始日、開始時の体重 |
+| `ExerciseDay` | 運動した日（カレンダーの運動スタンプ）。手動か HealthKit からか、運動した分数（HealthKit 用） |
 
 ## 開発の進め方
 
