@@ -76,7 +76,7 @@ struct ForecastRangeEstimatorTests {
 
     // MARK: - 予測できないとき
 
-    @Test("記録が 2 日だけなら、まだ予測できない（無料版と同じく 3 日から）")
+    @Test("記録が 2 日だけなら、まだ予測できない（無料版と同じ。#18 で必要な日数が 3 日に）")
     func insufficientData() {
         #expect(estimate(steadyLoss(days: 2), goal: 70) == .insufficientData(recordedDays: 2, requiredDays: GoalForecaster.minimumRecordedDays))
     }
