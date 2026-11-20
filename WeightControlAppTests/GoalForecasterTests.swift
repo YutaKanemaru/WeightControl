@@ -58,7 +58,7 @@ struct GoalForecasterTests {
         #expect(forecast(points, goal: 65) == .insufficientData(recordedDays: 3, requiredDays: 7))
     }
 
-    @Test("28 日より前の記録は数えない")
+    @Test("21 日より前の記録は数えない")
     func ignoresOldRecords() {
         // 100 日前に 10 日分 + 最近 3 日分
         let old = (0..<10).map { WeightPoint(date: day($0), weightKg: 80) }
@@ -78,35 +78,35 @@ struct GoalForecasterTests {
     @Test("毎日 0.1 kg 減っていれば、ペースは約 −0.7 kg/週")
     func weeklyPaceOfSteadyLoss() throws {
         let result = try available(forecast(steadyLoss(days: 60), goal: 70))
-        #expect(result.recordedDays == 28)
-        #expect(isApproximately(result.weeklyChangeKg, -0.7, tolerance: 0.02))
+        #expect(result.recordedDays == 21)
+        #expect(isApproximately(result.weeklyChangeKg, -0.7, tolerance: 1e-6))
         #expect(result.latestDate == day(59))
-        // トレンドは測定値（74.1 kg）より少し遅れてついてくる
-        #expect(isApproximately(result.currentTrendKg, 75.0, tolerance: 0.05))
+        // 測った体重に直線を引くので、今の体重の目安は遅れなく最新の体重（74.1 kg）と一致する
+        #expect(isApproximately(result.currentWeightKg, 74.1, tolerance: 1e-6))
     }
 
     @Test("今のペースが続いたときの到達日を出す")
     func predictsReachDate() throws {
-        // 計算上：トレンド約 75.0 kg、約 −0.693 kg/週 → 51 日後（59 + 51 = 110 日目）
+        // 計算上：今の体重の目安 74.1 kg、−0.1 kg/日 → 41 日後（59 + 41 = 100 日目）
         let result = try available(forecast(steadyLoss(days: 60), goal: 70))
-        #expect(result.outcome == .willReach(on: day(110)))
+        #expect(result.outcome == .willReach(on: day(100)))
     }
 
-    @Test("ばらつきがあっても、トレンドの傾きからペースを出せる")
+    @Test("ばらつきがあっても、直線の傾きからペースを出せる")
     func paceFromNoisyData() throws {
         // 毎日 0.05 kg 減りつつ、1 日おきに ±0.5 kg ぶれる
         let points = (0..<42).map { n in
             WeightPoint(date: day(n), weightKg: 80 - 0.05 * Double(n) + (n.isMultiple(of: 2) ? -0.5 : 0.5))
         }
         let result = try available(forecast(points, goal: 75))
-        #expect(isApproximately(result.weeklyChangeKg, -0.35, tolerance: 0.06))
+        #expect(isApproximately(result.weeklyChangeKg, -0.35, tolerance: 0.01))
         guard case .willReach = result.outcome else {
             Issue.record("到達日が出ていない: \(result.outcome)")
             return
         }
     }
 
-    @Test("トレンドが目標 ±0.1 kg 以内なら「届いた」")
+    @Test("今の体重の目安が目標 ±0.1 kg 以内なら「届いた」")
     func reachedGoal() throws {
         let points = (0..<10).map { WeightPoint(date: day($0), weightKg: 65.05) }
         let result = try available(forecast(points, goal: 65.0, deadline: day(30)))
@@ -165,20 +165,20 @@ struct GoalForecasterTests {
 
     @Test("到達日が期限ちょうどでも、間に合う")
     func reachOnDeadlineDay() throws {
-        let result = try available(forecast(steadyLoss(days: 60), goal: 70, deadline: day(110)))
+        let result = try available(forecast(steadyLoss(days: 60), goal: 70, deadline: day(100)))
         #expect(result.deadlineStatus == .onTrack)
     }
 
     @Test("到達日が期限より後なら、必要なペースを返す")
     func behindDeadline() throws {
-        // 59 日目時点でトレンド約 75.0 kg、期限まで 31 日 → 約 −1.13 kg/週 必要
+        // 59 日目時点で今の体重の目安 74.1 kg、期限まで 31 日 → 約 −0.93 kg/週 必要
         let result = try available(forecast(steadyLoss(days: 60), goal: 70, deadline: day(90)))
         guard case .behind(let required) = result.deadlineStatus else {
             Issue.record("期限に間に合う判定になっている: \(String(describing: result.deadlineStatus))")
             return
         }
-        #expect(isApproximately(required, (70 - result.currentTrendKg) / (31.0 / 7)))
-        #expect(isApproximately(required, -1.13, tolerance: 0.01))
+        #expect(isApproximately(required, (70 - result.currentWeightKg) / (31.0 / 7)))
+        #expect(isApproximately(required, -0.93, tolerance: 0.01))
     }
 
     @Test("期限が過ぎていれば「過ぎた」")
@@ -189,17 +189,17 @@ struct GoalForecasterTests {
 
     // MARK: - 予測線（グラフの点線）
 
-    @Test("予測線は今のトレンドから始まり、到達日にちょうど目標体重で終わる")
+    @Test("予測線は今の体重の目安から始まり、到達日にちょうど目標体重で終わる")
     func projectionEndsAtGoal() throws {
         let result = try available(forecast(steadyLoss(days: 60), goal: 70))
         let line = ForecastLineBuilder.projection(for: result, goalWeightKg: 70, deadline: nil, calendar: calendar)
 
         let first = try #require(line.first)
         let last = try #require(line.last)
-        #expect(first == WeightPoint(date: day(59), weightKg: result.currentTrendKg))
-        #expect(last == WeightPoint(date: day(110), weightKg: 70))
-        // 7 日ごとの点（59, 66, …, 108）＋最後の点（110）
-        #expect(line.count == 9)
+        #expect(first == WeightPoint(date: day(59), weightKg: result.currentWeightKg))
+        #expect(last == WeightPoint(date: day(100), weightKg: 70))
+        // 7 日ごとの点（59, 66, …, 94）＋最後の点（100）
+        #expect(line.count == 7)
         #expect(line[1].date == day(66))
         #expect(line.map(\.date) == line.map(\.date).sorted())
         // 途中の点は目標体重を下回らない

@@ -33,7 +33,7 @@ struct HomeDashboardBuilderTests {
     func noRecords() {
         let dashboard = build([], profile: profile, goal: DashboardGoal(targetWeightKg: 60, deadline: day(90)), now: day(0))
         #expect(dashboard.trend.isEmpty)
-        #expect(dashboard.currentTrendKg == nil)
+        #expect(dashboard.currentWeightKg == nil)
         #expect(dashboard.streakDays == 0)
         #expect(dashboard.praise.kind == .restart)
         #expect(dashboard.forecast == .insufficientData(recordedDays: 0, requiredDays: 7))

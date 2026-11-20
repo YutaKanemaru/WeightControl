@@ -7,7 +7,7 @@ import Foundation
 nonisolated enum ForecastLineBuilder {
     /// 今のペースが続いた場合の予測線。
     ///
-    /// - 始点は「今のトレンド体重」なので、実績のトレンド線とつながって見えます。
+    /// - 始点は「今の体重の目安」（直近 3 週間の体重に引いた直線の、最新の記録の日の値）です。
     /// - `stepDays` 日ごとに点を置きます（直線なので点は少なくて構いません）。
     /// - 目標体重を越える日が来たら、その日に「ちょうど目標体重」の点を置いて終わります。
     /// - 目標に届かない場合は `endDate` まで描きます。
@@ -32,7 +32,8 @@ nonisolated enum ForecastLineBuilder {
         var reachDay: Int?
         if let goal = goalWeightKg, dailyChangeKg != 0 {
             let days = (goal - startKg) / dailyChangeKg
-            if days > 0 { reachDay = Int(days.rounded(.up)) }
+            // 小数の誤差（41.0000001 日など）で 1 日多く切り上げないよう、ほんの少し引いてから切り上げる
+            if days > 0 { reachDay = Int((days - 1e-9).rounded(.up)) }
         }
         let lastDay = min(totalDays, reachDay ?? totalDays)
 
@@ -87,7 +88,7 @@ nonisolated enum ForecastLineBuilder {
         }
         return projection(
             startDate: forecast.latestDate,
-            startKg: forecast.currentTrendKg,
+            startKg: forecast.currentWeightKg,
             weeklyChangeKg: forecast.weeklyChangeKg,
             goalWeightKg: goalWeightKg,
             endDate: endDate,
@@ -96,7 +97,7 @@ nonisolated enum ForecastLineBuilder {
         )
     }
 
-    /// 「期限に間に合わせるなら、このペース」の線（今のトレンド体重 → 期限の日に目標体重）。
+    /// 「期限に間に合わせるなら、このペース」の線（今の体重の目安 → 期限の日に目標体重）。
     /// 期限がもう過ぎている場合は空です。
     static func requiredPace(
         startDate: Date,
