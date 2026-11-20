@@ -23,7 +23,7 @@
 | 項目 | 内容 |
 |---|---|
 | Xcode | 27.2 以降 |
-| 対応 OS | iOS 27.2 以降（`IPHONEOS_DEPLOYMENT_TARGET`） |
+| 対応 OS | iOS 26.0 以降（`IPHONEOS_DEPLOYMENT_TARGET`） |
 | UI | SwiftUI |
 | データ保存 | SwiftData |
 | テスト | Swift Testing（単体テスト）、XCTest（UI テスト） |
