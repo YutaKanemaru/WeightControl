@@ -178,14 +178,14 @@ struct DemoScenarioTests {
 
     // MARK: - ④ 記録が少ない
 
-    @Test("④ 記録 10 日：予測は「参考値」（48 日後）、食べ物ヒントは出ない")
+    @Test("④ 記録 10 日：予測は出る（48 日後・精度の注意なし）、食べ物ヒントは出ない（14 日未満）")
     func fewRecords() throws {
         let result = try dashboard(.fewRecords)
         #expect(isApproximately(try #require(result.currentWeightKg), 59.574545, tolerance: 0.001))
         #expect(result.streakDays == 10)
 
         let forecast = try available(result.forecast)
-        #expect(forecast.confidence == .reference)
+        #expect(forecast.confidence == .reliable)
         #expect(forecast.recordedDays == 10)
         #expect(isApproximately(forecast.weeklyChangeKg, -0.381818, tolerance: 0.001))
         #expect(forecast.outcome == .willReach(on: day(48)))

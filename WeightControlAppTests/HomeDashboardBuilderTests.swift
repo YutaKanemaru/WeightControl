@@ -36,8 +36,10 @@ struct HomeDashboardBuilderTests {
         #expect(dashboard.currentWeightKg == nil)
         #expect(dashboard.streakDays == 0)
         #expect(dashboard.praise.kind == .restart)
-        #expect(dashboard.forecast == .insufficientData(recordedDays: 0, requiredDays: 7))
+        #expect(dashboard.forecast == .insufficientData(recordedDays: 0, requiredDays: 3))
         #expect(dashboard.forecastLine.isEmpty)
+        #expect(dashboard.paceLine.isEmpty)
+        #expect(dashboard.paceRecordedDays == 0)
         #expect(dashboard.safety == nil)
         #expect(dashboard.intake == nil)
         #expect(dashboard.calorieHint == nil)
@@ -50,6 +52,9 @@ struct HomeDashboardBuilderTests {
         #expect(dashboard.forecast == nil)
         #expect(dashboard.forecastLine.isEmpty)
         #expect(dashboard.safety == nil)
+        // 目標がなくても、これまでの記録の直線はグラフに描く
+        #expect(dashboard.paceLine.count == 2)
+        #expect(dashboard.paceRecordedDays == 5)
 
         let bmr = CalorieCalculator.basalMetabolicRate(weightKg: 70, heightCm: 170, ageYears: 37, sex: .male)
         let expected = CalorieCalculator.recommendedIntake(
@@ -113,6 +118,8 @@ struct HomeDashboardBuilderTests {
         }
         #expect(forecast.confidence == .reliable)
         #expect(dashboard.trend.count == 21)
+        // 実線（これまでの直線）の終わりと、点線（予測）の始まりがつながる
+        #expect(dashboard.paceLine.last == dashboard.forecastLine.first)
         let last = try #require(dashboard.forecastLine.last)
         // 点線の最後は目標体重（日単位で切り上げるので、ほぼ目標体重）
         #expect(isApproximately(last.weightKg, 75, tolerance: 0.15))
@@ -139,8 +146,8 @@ struct HomeDashboardBuilderTests {
         #expect(hint.foodPhrase != nil)
     }
 
-    @Test("記録が 14 日未満（予測が参考）のうちは、食べ物ヒントを出さない")
-    func noFoodHintWhileReference() {
+    @Test("記録が 14 日未満のうちは（予測が出ていても）、食べ物ヒントを出さない")
+    func noFoodHintWithFewRecords() {
         let records = points(days: 10) { _ in 70 }
         let goal = DashboardGoal(targetWeightKg: 68, deadline: day(90), startWeightKg: 70)
         let dashboard = build(records, profile: profile, goal: goal, now: day(9))

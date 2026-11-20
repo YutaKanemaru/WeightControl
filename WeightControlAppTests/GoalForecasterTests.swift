@@ -42,35 +42,42 @@ struct GoalForecasterTests {
 
     @Test("記録がなければ予測できない")
     func noData() {
-        #expect(forecast([], goal: 70) == .insufficientData(recordedDays: 0, requiredDays: 7))
+        #expect(forecast([], goal: 70) == .insufficientData(recordedDays: 0, requiredDays: 3))
     }
 
-    @Test("記録が 6 日だけなら、まだ予測できない（あと 1 日）")
-    func sixDaysIsNotEnough() {
-        #expect(forecast(steadyLoss(days: 6), goal: 70) == .insufficientData(recordedDays: 6, requiredDays: 7))
+    @Test("記録が 2 日だけなら、まだ予測できない（あと 1 日）")
+    func twoDaysIsNotEnough() {
+        #expect(forecast(steadyLoss(days: 2), goal: 70) == .insufficientData(recordedDays: 2, requiredDays: 3))
+    }
+
+    @Test("記録が 3 日あれば予測を出す")
+    func threeDaysIsEnough() throws {
+        let result = try available(forecast(steadyLoss(days: 3), goal: 70))
+        #expect(result.recordedDays == 3)
+        #expect(isApproximately(result.weeklyChangeKg, -0.7))
     }
 
     @Test("同じ日に何回測っても 1 日として数える")
     func countsDaysNotEntries() {
-        let points = (0..<3).flatMap { n in
+        let points = (0..<2).flatMap { n in
             [WeightPoint(date: day(n), weightKg: 70), WeightPoint(date: day(n).addingTimeInterval(3_600), weightKg: 70)]
         }
-        #expect(forecast(points, goal: 65) == .insufficientData(recordedDays: 3, requiredDays: 7))
+        #expect(forecast(points, goal: 65) == .insufficientData(recordedDays: 2, requiredDays: 3))
     }
 
     @Test("21 日より前の記録は数えない")
     func ignoresOldRecords() {
-        // 100 日前に 10 日分 + 最近 3 日分
+        // 100 日前に 10 日分 + 最近 2 日分
         let old = (0..<10).map { WeightPoint(date: day($0), weightKg: 80) }
-        let recent = (100..<103).map { WeightPoint(date: day($0), weightKg: 78) }
-        #expect(forecast(old + recent, goal: 70) == .insufficientData(recordedDays: 3, requiredDays: 7))
+        let recent = (100..<102).map { WeightPoint(date: day($0), weightKg: 78) }
+        #expect(forecast(old + recent, goal: 70) == .insufficientData(recordedDays: 2, requiredDays: 3))
     }
 
-    @Test("7〜13 日は「参考値」、14 日以上は「信頼できる」")
+    @Test("3〜6 日は「精度が低め」、7 日以上は「信頼できる」")
     func confidenceByRecordedDays() throws {
-        #expect(try available(forecast(steadyLoss(days: 7), goal: 70)).confidence == .reference)
-        #expect(try available(forecast(steadyLoss(days: 13), goal: 70)).confidence == .reference)
-        #expect(try available(forecast(steadyLoss(days: 14), goal: 70)).confidence == .reliable)
+        #expect(try available(forecast(steadyLoss(days: 3), goal: 70)).confidence == .low)
+        #expect(try available(forecast(steadyLoss(days: 6), goal: 70)).confidence == .low)
+        #expect(try available(forecast(steadyLoss(days: 7), goal: 70)).confidence == .reliable)
     }
 
     // MARK: - ペースと到達日
@@ -240,6 +247,19 @@ struct GoalForecasterTests {
         #expect(line.map(\.date) == [day(0), day(7), day(14)])
         #expect(isApproximately(line[1].weightKg, 69.3))
         #expect(isApproximately(line[2].weightKg, 68.6))
+    }
+
+    @Test("これまでの直線は、いちばん古い記録の日から今の体重の目安まで")
+    func fittedLineSpansWindow() throws {
+        // 30 日分の記録のうち、直線に使うのは直近 21 日（9〜29 日目）
+        let estimate = try #require(GoalForecaster.paceEstimate(points: steadyLoss(days: 30), calendar: calendar))
+        let line = ForecastLineBuilder.fittedLine(for: estimate, calendar: calendar)
+        #expect(line.count == 2)
+        #expect(line[0].date == day(9))
+        #expect(line[1].date == day(29))
+        #expect(isApproximately(line[0].weightKg, 80 - 0.9))
+        #expect(isApproximately(line[1].weightKg, estimate.currentWeightKg))
+        #expect(isApproximately(line[1].weightKg, 80 - 2.9))
     }
 
     @Test("必要なペースの線は、今から期限の日の目標体重まで")
