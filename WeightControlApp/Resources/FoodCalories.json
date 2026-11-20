@@ -1,0 +1,326 @@
+{
+  "version": 1,
+  "note": "カロリーはおおよその目安です（商品や量によって変わります）。",
+  "foods": [
+    {
+      "id": "mikan",
+      "name": "みかん",
+      "unit": "個",
+      "portion": "中1個（約100g）",
+      "kcal": 49,
+      "category": "fruit"
+    },
+    {
+      "id": "banana",
+      "name": "バナナ",
+      "unit": "本",
+      "portion": "中1本（約100g）",
+      "kcal": 90,
+      "category": "fruit"
+    },
+    {
+      "id": "apple",
+      "name": "りんご",
+      "unit": "個",
+      "portion": "中1個（約250g）",
+      "kcal": 130,
+      "category": "fruit"
+    },
+    {
+      "id": "kiwi",
+      "name": "キウイ",
+      "unit": "個",
+      "portion": "1個（約85g）",
+      "kcal": 50,
+      "category": "fruit"
+    },
+    {
+      "id": "onigiri",
+      "name": "おにぎり",
+      "unit": "個",
+      "portion": "コンビニの鮭おにぎり1個",
+      "kcal": 180,
+      "category": "staple"
+    },
+    {
+      "id": "rice",
+      "name": "ごはん",
+      "unit": "杯",
+      "portion": "茶わん1杯（約150g）",
+      "kcal": 235,
+      "category": "staple"
+    },
+    {
+      "id": "bread",
+      "name": "食パン",
+      "unit": "枚",
+      "portion": "6枚切り1枚",
+      "kcal": 150,
+      "category": "staple"
+    },
+    {
+      "id": "roll_bread",
+      "name": "ロールパン",
+      "unit": "個",
+      "portion": "1個（約30g）",
+      "kcal": 95,
+      "category": "staple"
+    },
+    {
+      "id": "udon",
+      "name": "うどん",
+      "unit": "玉",
+      "portion": "ゆでうどん1玉",
+      "kcal": 200,
+      "category": "staple"
+    },
+    {
+      "id": "boiled_egg",
+      "name": "ゆで卵",
+      "unit": "個",
+      "portion": "1個",
+      "kcal": 75,
+      "category": "dish"
+    },
+    {
+      "id": "karaage",
+      "name": "唐揚げ",
+      "unit": "個",
+      "portion": "1個（約30g）",
+      "kcal": 75,
+      "category": "dish"
+    },
+    {
+      "id": "gyoza",
+      "name": "餃子",
+      "unit": "個",
+      "portion": "1個",
+      "kcal": 40,
+      "category": "dish"
+    },
+    {
+      "id": "croquette",
+      "name": "コロッケ",
+      "unit": "個",
+      "portion": "1個",
+      "kcal": 180,
+      "category": "dish"
+    },
+    {
+      "id": "nikuman",
+      "name": "肉まん",
+      "unit": "個",
+      "portion": "1個",
+      "kcal": 240,
+      "category": "dish"
+    },
+    {
+      "id": "hamburger",
+      "name": "ハンバーガー",
+      "unit": "個",
+      "portion": "1個",
+      "kcal": 260,
+      "category": "dish"
+    },
+    {
+      "id": "french_fries",
+      "name": "フライドポテト",
+      "unit": "個",
+      "portion": "Mサイズ1個",
+      "kcal": 410,
+      "category": "dish"
+    },
+    {
+      "id": "cup_noodle",
+      "name": "カップ麺",
+      "unit": "個",
+      "portion": "1個（標準サイズ）",
+      "kcal": 350,
+      "category": "dish"
+    },
+    {
+      "id": "ramen",
+      "name": "ラーメン",
+      "unit": "杯",
+      "portion": "しょうゆラーメン1杯",
+      "kcal": 500,
+      "category": "dish"
+    },
+    {
+      "id": "cookie",
+      "name": "クッキー",
+      "unit": "枚",
+      "portion": "1枚",
+      "kcal": 50,
+      "category": "snack"
+    },
+    {
+      "id": "senbei",
+      "name": "せんべい",
+      "unit": "枚",
+      "portion": "しょうゆせんべい1枚（約20g）",
+      "kcal": 75,
+      "category": "snack"
+    },
+    {
+      "id": "potato_chips",
+      "name": "ポテトチップス",
+      "unit": "袋",
+      "portion": "1袋（60g）",
+      "kcal": 330,
+      "category": "snack"
+    },
+    {
+      "id": "chocolate",
+      "name": "板チョコ",
+      "unit": "枚",
+      "portion": "1枚（50g）",
+      "kcal": 280,
+      "category": "snack"
+    },
+    {
+      "id": "pudding",
+      "name": "プリン",
+      "unit": "個",
+      "portion": "カップ1個",
+      "kcal": 120,
+      "category": "sweets"
+    },
+    {
+      "id": "ice_cream",
+      "name": "アイスクリーム",
+      "unit": "個",
+      "portion": "カップ1個",
+      "kcal": 200,
+      "category": "sweets"
+    },
+    {
+      "id": "dorayaki",
+      "name": "どら焼き",
+      "unit": "個",
+      "portion": "1個",
+      "kcal": 220,
+      "category": "sweets"
+    },
+    {
+      "id": "daifuku",
+      "name": "大福",
+      "unit": "個",
+      "portion": "1個",
+      "kcal": 230,
+      "category": "sweets"
+    },
+    {
+      "id": "cream_puff",
+      "name": "シュークリーム",
+      "unit": "個",
+      "portion": "1個",
+      "kcal": 210,
+      "category": "sweets"
+    },
+    {
+      "id": "donut",
+      "name": "ドーナツ",
+      "unit": "個",
+      "portion": "1個",
+      "kcal": 230,
+      "category": "sweets"
+    },
+    {
+      "id": "anpan",
+      "name": "あんパン",
+      "unit": "個",
+      "portion": "1個",
+      "kcal": 280,
+      "category": "sweets"
+    },
+    {
+      "id": "melonpan",
+      "name": "メロンパン",
+      "unit": "個",
+      "portion": "1個",
+      "kcal": 370,
+      "category": "sweets"
+    },
+    {
+      "id": "shortcake",
+      "name": "ショートケーキ",
+      "unit": "個",
+      "portion": "1個",
+      "kcal": 320,
+      "category": "sweets"
+    },
+    {
+      "id": "milk",
+      "name": "牛乳",
+      "unit": "杯",
+      "portion": "コップ1杯（200ml）",
+      "kcal": 125,
+      "category": "drink"
+    },
+    {
+      "id": "orange_juice",
+      "name": "オレンジジュース",
+      "unit": "杯",
+      "portion": "コップ1杯（200ml）",
+      "kcal": 85,
+      "category": "drink"
+    },
+    {
+      "id": "cafe_latte",
+      "name": "カフェラテ",
+      "unit": "杯",
+      "portion": "Mサイズ1杯",
+      "kcal": 130,
+      "category": "drink"
+    },
+    {
+      "id": "cola",
+      "name": "コーラ",
+      "unit": "本",
+      "portion": "500mlペットボトル1本",
+      "kcal": 225,
+      "category": "drink"
+    },
+    {
+      "id": "beer",
+      "name": "缶ビール",
+      "unit": "缶",
+      "portion": "350ml缶1本",
+      "kcal": 140,
+      "category": "alcohol"
+    },
+    {
+      "id": "chuhai",
+      "name": "缶チューハイ",
+      "unit": "缶",
+      "portion": "350ml缶1本（レモン）",
+      "kcal": 180,
+      "category": "alcohol"
+    },
+    {
+      "id": "highball",
+      "name": "ハイボール",
+      "unit": "杯",
+      "portion": "1杯（ウイスキー30ml）",
+      "kcal": 70,
+      "category": "alcohol"
+    },
+    {
+      "id": "wine",
+      "name": "ワイン",
+      "unit": "杯",
+      "portion": "グラス1杯（約100ml）",
+      "kcal": 75,
+      "category": "alcohol"
+    },
+    {
+      "id": "sake",
+      "name": "日本酒",
+      "unit": "合",
+      "portion": "1合（180ml）",
+      "kcal": 190,
+      "category": "alcohol"
+    }
+  ]
+}
