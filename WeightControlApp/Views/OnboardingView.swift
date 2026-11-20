@@ -3,21 +3,26 @@ import SwiftData
 
 /// 初回だけ表示する「はじめに」の画面。
 ///
-/// 3 つのページで進みます。
+/// 次のページで進みます。
 /// 1. ようこそ：アプリでできることと、ご利用の前の注意（医療アドバイスではありません など）
-/// 2. あなたについて：身長・生まれた年・性別・活動量と、いまの体重（任意）
-/// 3. 目標：目標体重と期限（あとから決めてもよい）
+/// 2. ヘルスケア：連携するかを選ぶ。連携すると、ヘルスケアの身長・生まれた年・性別を次のページに入れておき、
+///    体重の記録も取り込む（ヘルスケアを使えない端末や、もう連携している場合はこのページを飛ばす）
+/// 3. あなたについて：身長・生まれた年・性別・活動量と、いまの体重（任意）
+/// 4. 目標：目標体重と期限（あとから決めてもよい）
 ///
 /// `NavigationStack(path:)` は「いま何ページ目まで進んでいるか」を配列で管理する仕組みで、
 /// 配列に要素を足すと次のページへ進み、戻るボタンで要素が減ります。
 /// 入力した値は最後に「はじめる」を押すまで保存しないので、途中でアプリを閉じても中途半端なデータは残りません。
 struct OnboardingView: View {
     @Environment(\.modelContext) private var modelContext
+    /// ヘルスケア連携の係（プレビューなどで渡されていないときは nil）
+    @Environment(HealthSyncController.self) private var health: HealthSyncController?
     /// いちばん新しい体重（ヘルスケアなどから先に入っていれば、目標の「スタート時の体重」に使う）
     @Query(sort: \WeightEntry.date, order: .reverse) private var entries: [WeightEntry]
 
     /// 進むページの種類
     private enum Page: Hashable {
+        case health
         case profile
         case goal
     }
@@ -30,12 +35,20 @@ struct OnboardingView: View {
     @State private var currentWeightErrorMessage: String?
     @State private var targetWeightErrorMessage: String?
     @State private var deadlineErrorMessage: String?
+    /// ヘルスケアの許可と取り込みを待っている間 true
+    @State private var isConnectingHealth = false
+    /// ヘルスケアから入力欄に入れた項目があるか（「入れておきました」のお知らせを出す）
+    @State private var didPrefillFromHealth = false
+    /// ヘルスケアのページで「連携する」か「今は連携しない」を選び終えたか
+    /// （連携した後もステップの数が変わらないように覚えておく）
+    @State private var didFinishHealthStep = false
 
     var body: some View {
         NavigationStack(path: $path) {
             welcomePage
                 .navigationDestination(for: Page.self) { page in
                     switch page {
+                    case .health: healthPage
                     case .profile: profilePage
                     case .goal: goalPage
                     }
@@ -89,7 +102,7 @@ struct OnboardingView: View {
         .safeAreaInset(edge: .bottom) {
             VStack(spacing: 8) {
                 bottomButton("確認して次へ") {
-                    path.append(.profile)
+                    path.append(showsHealthPage ? .health : .profile)
                 }
                 Text("「確認して次へ」を押すと、上の内容に同意したものとします。")
                     .font(.footnote)
@@ -102,32 +115,162 @@ struct OnboardingView: View {
         .toolbar(.hidden, for: .navigationBar)
     }
 
-    // MARK: - 2 ページ目：あなたについて
+    // MARK: - ヘルスケア（使える端末だけ）
+
+    /// ヘルスケアのページを出すか（ヘルスケアを使えない端末と、すでに連携済みなら出さない）
+    private var showsHealthPage: Bool {
+        guard let health else { return false }
+        return health.isAvailable && (!health.isEnabled || isConnectingHealth || didFinishHealthStep)
+    }
+
+    /// 入力のページが全部で何ステップあるか
+    private var totalSteps: Int { showsHealthPage ? 3 : 2 }
+
+    private var healthPage: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 28) {
+                VStack(alignment: .leading, spacing: 12) {
+                    stepHeader(step: 1, message: "あとから設定タブでいつでも変えられます。")
+                    Text("ヘルスケアと連携しますか？")
+                        .font(.title.bold())
+                        .accessibilityAddTraits(.isHeader)
+                }
+
+                VStack(alignment: .leading, spacing: 20) {
+                    InfoPointRow(
+                        title: "身長などを引き継ぎ",
+                        detail: "ヘルスケアに登録している身長・生年月日・性別を、次のページに入れておきます。",
+                        systemImage: "person.text.rectangle"
+                    )
+                    InfoPointRow(
+                        title: "体重の記録を取り込み",
+                        detail: "体重計アプリなどでヘルスケアに記録した体重も、グラフや予測に使えます。",
+                        systemImage: "scalemass"
+                    )
+                    InfoPointRow(
+                        title: "運動した日にスタンプ",
+                        detail: "歩数やワークアウトから、運動した日のカレンダーに自動でスタンプを押します。",
+                        systemImage: "figure.run"
+                    )
+                }
+
+                NoticeLabel("「連携する」を押すと、どのデータを読み取るかを選ぶ画面が出ます。データはこの iPhone の中だけで使い、外部には送りません。")
+            }
+            .padding()
+        }
+        .safeAreaInset(edge: .bottom) {
+            VStack(spacing: 12) {
+                Button(action: connectHealth) {
+                    HStack(spacing: 8) {
+                        if isConnectingHealth {
+                            ProgressView()
+                        }
+                        (isConnectingHealth ? Text("読み込み中…") : Text("連携する"))
+                            .font(.headline)
+                    }
+                    .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.large)
+
+                Button {
+                    didFinishHealthStep = true
+                    path.append(.profile)
+                } label: {
+                    Text("今は連携しない")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.large)
+            }
+            .disabled(isConnectingHealth)
+            .padding()
+            .background(.bar)
+        }
+        .navigationTitle("ヘルスケア")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+
+    /// ヘルスケアの許可を求め、体重を取り込み、身長などを入力欄に入れてから次のページへ進む
+    private func connectHealth() {
+        guard let health else { return }
+        isConnectingHealth = true
+        Task {
+            await health.enable(context: modelContext)
+            apply(await health.profilePrefill())
+            didFinishHealthStep = true
+            isConnectingHealth = false
+            path.append(.profile)
+        }
+    }
+
+    /// ヘルスケアの値を入力欄に入れる（ない項目は触らない）
+    private func apply(_ prefill: HealthProfilePrefill) {
+        guard !prefill.isEmpty else { return }
+        if let heightCm = prefill.heightCm {
+            profileDraft.heightText = heightCm.formatted(.number.precision(.fractionLength(0...1)).grouping(.never))
+        }
+        if let birthYear = prefill.birthYear {
+            profileDraft.birthYear = birthYear
+        }
+        switch prefill.sex {
+        case .male: profileDraft.sex = .male
+        case .female: profileDraft.sex = .female
+        case nil: break
+        }
+        didPrefillFromHealth = true
+    }
+
+    // MARK: - あなたについて
 
     private var profilePage: some View {
         Form {
             Section {
             } header: {
-                stepHeader(step: 1, message: "カロリーの目安や予測を、あなたに合わせて出すために使います。")
+                stepHeader(step: totalSteps - 1, message: "カロリーの目安や予測を、あなたに合わせて出すために使います。")
+            }
+
+            if didPrefillFromHealth {
+                Section {
+                    NoticeLabel("ヘルスケアから身長などを入れておきました。違っていれば直してください。", style: .success)
+                }
             }
 
             ProfileFormSections(draft: $profileDraft, heightErrorMessage: heightErrorMessage)
 
-            Section {
-                HStack {
-                    TextField("いまの体重", text: $currentWeightText, prompt: Text(verbatim: "65.0"))
-                        .keyboardType(.decimalPad)
-                        .font(.title3.monospacedDigit())
-                    Text(verbatim: "kg")
-                        .foregroundStyle(.secondary)
+            if let latest = entries.first {
+                // ヘルスケアなどから記録がもう入っているときは、入力欄の代わりに最新の体重を見せる
+                Section {
+                    LabeledContent {
+                        Text("\(latest.weightKg, format: .number.precision(.fractionLength(1))) kg")
+                            .monospacedDigit()
+                    } label: {
+                        Label("最新の記録", systemImage: "scalemass")
+                    }
+                } header: {
+                    Text("いまの体重")
+                } footer: {
+                    Text("ヘルスケアから取り込んだ記録を使います。")
                 }
-            } header: {
-                Text("いまの体重（任意）")
-            } footer: {
-                if let currentWeightErrorMessage {
-                    FieldErrorText(currentWeightErrorMessage)
-                } else {
-                    Text("入れておくと、今日の記録として保存し、次の目標の画面でペースの目安を出せます。あとで記録してもかまいません。")
+            } else {
+                Section {
+                    HStack {
+                        TextField("いまの体重", text: $currentWeightText, prompt: Text(verbatim: "65.0"))
+                            .keyboardType(.decimalPad)
+                            .font(.title3.monospacedDigit())
+                            .accessibilityLabel(Text("いまの体重（キログラム）"))
+                        Text(verbatim: "kg")
+                            .foregroundStyle(.secondary)
+                            .accessibilityHidden(true)
+                    }
+                } header: {
+                    Text("いまの体重（任意）")
+                } footer: {
+                    if let currentWeightErrorMessage {
+                        FieldErrorText(currentWeightErrorMessage)
+                    } else {
+                        Text("入れておくと、今日の記録として保存し、次の目標の画面でペースの目安を出せます。あとで記録してもかまいません。")
+                    }
                 }
             }
         }
@@ -148,13 +291,13 @@ struct OnboardingView: View {
         .onChange(of: currentWeightText) { currentWeightErrorMessage = nil }
     }
 
-    // MARK: - 3 ページ目：目標
+    // MARK: - 目標
 
     private var goalPage: some View {
         Form {
             Section {
             } header: {
-                stepHeader(step: 2, message: "目標は、あとから設定タブでいつでも変えられます。")
+                stepHeader(step: totalSteps, message: "目標は、あとから設定タブでいつでも変えられます。")
             }
 
             GoalFormSections(
@@ -190,7 +333,7 @@ struct OnboardingView: View {
     /// 「ステップ 1 / 2」と、そのページで入力する理由
     private func stepHeader(step: Int, message: LocalizedStringKey) -> some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text("ステップ \(step) / 2")
+            Text("ステップ \(step) / \(totalSteps)")
                 .font(.subheadline.weight(.semibold))
                 .foregroundStyle(.tint)
             Text(message)
@@ -303,6 +446,7 @@ extension WeightInputParser.ParseError {
 #Preview("はじめに") {
     OnboardingView()
         .modelContainer(.preview(includesProfile: false))
+        .environment(HealthSyncController())
 }
 
 #Preview("大きい文字・ダークモード") {
