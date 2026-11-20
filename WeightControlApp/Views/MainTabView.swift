@@ -13,6 +13,9 @@ struct MainTabView: View {
             Tab("記録", systemImage: "list.bullet") {
                 WeightHistoryView()
             }
+            Tab("カレンダー", systemImage: "calendar") {
+                StampCalendarView()
+            }
             Tab("設定", systemImage: "gearshape") {
                 SettingsView()
             }

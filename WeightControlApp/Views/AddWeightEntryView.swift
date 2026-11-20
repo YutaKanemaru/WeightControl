@@ -6,6 +6,8 @@ struct AddWeightEntryView: View {
     @Environment(\.modelContext) private var modelContext
     /// この画面を閉じるための関数。環境（Environment）から受け取る。
     @Environment(\.dismiss) private var dismiss
+    /// ヘルスケア連携の係（プレビューなどで渡されていないときは nil）
+    @Environment(HealthSyncController.self) private var health: HealthSyncController?
 
     /// 前回の体重（入力欄のうすい見本表示に使う）。記録がなければ nil。
     let lastWeightKg: Double?
@@ -72,7 +74,12 @@ struct AddWeightEntryView: View {
         switch WeightInputParser.parse(weightText) {
         case .success(let weightKg):
             // insert するだけで SwiftData が自動で保存してくれる
-            modelContext.insert(WeightEntry(date: date, weightKg: weightKg))
+            let entry = WeightEntry(date: date, weightKg: weightKg)
+            modelContext.insert(entry)
+            // 設定でオンなら、ヘルスケアにも書き込む（終わるのを待たずに画面を閉じる）
+            if let health {
+                Task { await health.exportNewEntry(entry) }
+            }
             dismiss()
         case .failure(let error):
             errorMessage = message(for: error)

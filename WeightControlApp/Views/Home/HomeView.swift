@@ -141,7 +141,7 @@ struct HomeView: View {
 @MainActor
 private func homePreviewContainer(goalKg: Double = 62, deadlineMonths: Int = 3, isFlat: Bool = false) -> ModelContainer {
     let container = try! ModelContainer(
-        for: WeightEntry.self, UserProfile.self, WeightGoal.self,
+        for: WeightEntry.self, UserProfile.self, WeightGoal.self, ExerciseDay.self,
         configurations: ModelConfiguration(isStoredInMemoryOnly: true)
     )
     let context = container.mainContext
@@ -176,5 +176,5 @@ private func homePreviewContainer(goalKg: Double = 62, deadlineMonths: Int = 3, 
 
 #Preview("記録なし") {
     HomeView()
-        .modelContainer(for: [WeightEntry.self, UserProfile.self, WeightGoal.self], inMemory: true)
+        .modelContainer(for: [WeightEntry.self, UserProfile.self, WeightGoal.self, ExerciseDay.self], inMemory: true)
 }
