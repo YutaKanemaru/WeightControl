@@ -97,6 +97,19 @@ nonisolated enum ForecastLineBuilder {
         )
     }
 
+    /// これまでの記録に引いた直線（グラフの実線）。
+    ///
+    /// 直近 21 日の測った体重に引いた直線を、いちばん古い記録の日から最新の記録の日まで描くための 2 点です。
+    /// 最新の記録の日の値は「今の体重の目安」なので、予測線（点線）の始点とつながります。
+    static func fittedLine(for estimate: WeightPaceEstimate, calendar: Calendar = .current) -> [WeightPoint] {
+        let spanDays = DayMath.days(from: estimate.firstDate, to: estimate.latestDate, calendar: calendar)
+        guard spanDays > 0 else { return [] }
+        return [
+            WeightPoint(date: estimate.firstDate, weightKg: estimate.currentWeightKg - estimate.dailyChangeKg * Double(spanDays)),
+            WeightPoint(date: estimate.latestDate, weightKg: estimate.currentWeightKg),
+        ]
+    }
+
     /// 「期限に間に合わせるなら、このペース」の線（今の体重の目安 → 期限の日に目標体重）。
     /// 期限がもう過ぎている場合は空です。
     static func requiredPace(

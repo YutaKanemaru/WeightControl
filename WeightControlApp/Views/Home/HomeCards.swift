@@ -2,26 +2,7 @@ import SwiftUI
 
 // ホーム画面に並べる「カード」の部品たち。
 // どのカードも、計算済みの結果（Logic の値）を受け取って表示するだけです。
-
-/// 角丸の背景つきの入れ物
-struct DashboardCard<Content: View>: View {
-    let title: LocalizedStringKey
-    let systemImage: String
-    var tint: Color = .accentColor
-    @ViewBuilder let content: Content
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Label(title, systemImage: systemImage)
-                .font(.headline)
-                .foregroundStyle(tint)
-            content
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding()
-        .background(.background.secondary, in: .rect(cornerRadius: 16))
-    }
-}
+// 見た目の共通部品（DashboardCard・MetricView・NoticeLabel）は Views/Components/ にあります。
 
 /// kg を小数 1 桁で表示する書式
 private let kgFormat = FloatingPointFormatStyle<Double>.number.precision(.fractionLength(1))
@@ -29,6 +10,60 @@ private let kgFormat = FloatingPointFormatStyle<Double>.number.precision(.fracti
 private let signedKgFormat = FloatingPointFormatStyle<Double>.number
     .precision(.fractionLength(1))
     .sign(strategy: .always(includingZero: false))
+
+// MARK: - 体重（いちばん大事な数字）
+
+/// 最新の体重と「目標まで」を大きく出すカード。
+///
+/// 文字がとても大きい設定のときは、横に並びきらないので `ViewThatFits` で縦並びに切り替えます。
+/// （`ViewThatFits` は、最初に書いた並べ方が入りきらなければ次の並べ方を使う、という入れ物です）
+struct WeightSummaryCard: View {
+    let latestKg: Double
+    let latestDate: Date
+    /// 目標までの残り（kg）。目標がなければ nil。
+    let remainingKg: Double?
+    let goalWeightKg: Double?
+
+    var body: some View {
+        DashboardCard(title: "体重", systemImage: "scalemass") {
+            ViewThatFits(in: .horizontal) {
+                HStack(alignment: .lastTextBaseline) {
+                    latest
+                    Spacer(minLength: 16)
+                    remaining
+                }
+                VStack(alignment: .leading, spacing: 12) {
+                    latest
+                    remaining
+                }
+            }
+        }
+    }
+
+    private var latest: some View {
+        MetricView(
+            "最新の体重",
+            value: latestKg,
+            unit: "kg",
+            caption: Text(latestDate, format: .dateTime.month().day().hour().minute()),
+            size: .hero
+        )
+    }
+
+    @ViewBuilder
+    private var remaining: some View {
+        if let remainingKg, let goalWeightKg {
+            MetricView(
+                "目標まで",
+                value: remainingKg,
+                unit: "kg",
+                caption: Text("目標 \(goalWeightKg, format: kgFormat) kg"),
+                size: .medium,
+                tint: .green
+            )
+        }
+    }
+}
 
 // MARK: - ほめるメッセージ
 
@@ -41,19 +76,21 @@ struct PraiseCard: View {
             Image(systemName: symbol)
                 .font(.title2)
                 .foregroundStyle(.orange)
+                .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 4) {
                 Text(message.text)
-                    .font(.body)
+                    .font(.body.weight(.medium))
+                    .fixedSize(horizontal: false, vertical: true)
                 if streakDays > 0 {
                     Text("連続 \(streakDays) 日記録中")
-                        .font(.caption)
+                        .font(.footnote.monospacedDigit())
                         .foregroundStyle(.secondary)
                 }
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding()
-        .background(.orange.opacity(0.12), in: .rect(cornerRadius: 16))
+        .background(.orange.opacity(0.12), in: .rect(cornerRadius: 20))
         .accessibilityElement(children: .combine)
     }
 
@@ -69,24 +106,64 @@ struct PraiseCard: View {
     }
 }
 
+// MARK: - グラフ
+
+/// 体重のグラフのカード。記録が少ないときの注意書きもここに出します。
+struct WeightChartCard: View {
+    let dashboard: HomeDashboard
+    let goalWeightKg: Double?
+    let deadline: Date?
+
+    var body: some View {
+        DashboardCard(title: "体重のグラフ", systemImage: "chart.xyaxis.line") {
+            WeightChartView(
+                measured: dashboard.trend.map { WeightPoint(date: $0.date, weightKg: $0.measuredKg) },
+                paceLine: dashboard.paceLine,
+                forecastLine: dashboard.forecastLine,
+                goalWeightKg: goalWeightKg,
+                deadline: deadline
+            )
+            notice
+        }
+    }
+
+    @ViewBuilder
+    private var notice: some View {
+        if dashboard.paceRecordedDays == 0 {
+            NoticeLabel("直近 3 週間に \(GoalForecaster.minimumRecordedDays) 日分の記録がたまると、ペースの直線と予測を表示します。")
+        } else if dashboard.paceRecordedDays < GoalForecaster.reliableRecordedDays, dashboard.forecast == nil {
+            // 目標があるときは「達成の見込み」のカードに同じ注意を出すので、ここでは目標がないときだけ出す
+            LowAccuracyNotice(recordedDays: dashboard.paceRecordedDays)
+        }
+    }
+}
+
+/// 記録が少ないうち（最初の 1 週間）の「精度が低め」の注意
+struct LowAccuracyNotice: View {
+    let recordedDays: Int
+
+    var body: some View {
+        NoticeLabel(
+            text: Text("記録が \(GoalForecaster.reliableRecordedDays) 日分たまるまでは、日々のブレで直線の向きが大きく変わるため、予測の精度は低めです（いま \(recordedDays) 日分）。"),
+            style: .caution
+        )
+    }
+}
+
 // MARK: - 達成の見込み
 
 struct ForecastCard: View {
-    /// 予測の結果。目標がなければ nil。
-    let forecast: GoalForecastResult?
+    let forecast: GoalForecastResult
 
     var body: some View {
         DashboardCard(title: "達成の見込み", systemImage: "flag.checkered") {
             switch forecast {
-            case nil:
-                Text("目標を決めると、目標体重に届く日を予測します。")
-                    .foregroundStyle(.secondary)
-            case .insufficientData(let recordedDays, let requiredDays)?:
-                VStack(alignment: .leading, spacing: 6) {
+            case .insufficientData(let recordedDays, let requiredDays):
+                VStack(alignment: .leading, spacing: 8) {
                     Text("あと \(max(requiredDays - recordedDays, 1)) 日記録すると、目標に届く日を予測できます。")
                     ProgressView(value: Double(recordedDays), total: Double(requiredDays))
                 }
-            case .available(let result)?:
+            case .available(let result):
                 available(result)
             }
         }
@@ -94,50 +171,93 @@ struct ForecastCard: View {
 
     @ViewBuilder
     private func available(_ forecast: GoalForecast) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: 12) {
             switch forecast.outcome {
             case .reached:
-                Text("目標体重に届いています！")
-                    .font(.title3.bold())
+                MetricView(text: Text("届いています"), caption: Text("目標体重に届いています。おめでとうございます！"), tint: .green)
             case .willReach(let date):
-                Text("\(date, format: .dateTime.year().month().day()) ごろ")
-                    .font(.title3.bold())
-                Text("このペースが続くと、目標体重に届く見込みです。")
+                MetricView(
+                    "このペースなら",
+                    text: Text(date, format: .dateTime.year().month().day()),
+                    unit: "ごろ",
+                    caption: Text("目標体重に届く見込みです")
+                )
             case .notApproaching:
-                Text("いまは目標に向かう流れが、まだ見えていません。")
-                Text("体重は日々上下するものです。記録を続けると、流れが見えてきます。")
-                    .font(.callout)
-                    .foregroundStyle(.secondary)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("いまは目標に向かう流れが、まだ見えていません。")
+                        .font(.headline)
+                    Text("体重は日々上下するものです。記録を続けると、流れが見えてきます。")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
             }
 
-            Text("今のペース：週 \(forecast.weeklyChangeKg, format: signedKgFormat) kg")
-                .font(.callout.monospacedDigit())
-                .foregroundStyle(.secondary)
+            MetricView(
+                "今のペース（1 週間あたり）",
+                text: Text(forecast.weeklyChangeKg, format: signedKgFormat),
+                unit: "kg",
+                size: .medium
+            )
 
             if let status = forecast.deadlineStatus {
-                deadlineText(status)
-                    .font(.callout)
+                deadlineNotice(status)
             }
 
-            if forecast.confidence == .reference {
-                Label("記録が \(GoalForecaster.reliableRecordedDays) 日分たまるまでは参考値です（いま \(forecast.recordedDays) 日分）", systemImage: "info.circle")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+            if forecast.confidence == .low {
+                LowAccuracyNotice(recordedDays: forecast.recordedDays)
             }
         }
     }
 
     @ViewBuilder
-    private func deadlineText(_ status: GoalForecast.DeadlineStatus) -> some View {
+    private func deadlineNotice(_ status: GoalForecast.DeadlineStatus) -> some View {
         switch status {
         case .onTrack:
-            Label("期限に間に合うペースです", systemImage: "checkmark.circle")
-                .foregroundStyle(.green)
+            NoticeLabel("期限に間に合うペースです", style: .success)
         case .behind(let requiredWeeklyChangeKg):
-            Text("期限に間に合わせるには、週 \(requiredWeeklyChangeKg, format: signedKgFormat) kg のペースが目安です。")
+            NoticeLabel(text: Text("期限に間に合わせるには、週 \(requiredWeeklyChangeKg, format: signedKgFormat) kg のペースが目安です。"))
         case .passed:
-            Text("期限の日を過ぎました。目標を見直してみましょう。")
+            NoticeLabel("期限の日を過ぎました。目標を見直してみましょう。")
         }
+    }
+}
+
+// MARK: - 目標がまだないとき
+
+struct GoalPromptCard: View {
+    let currentWeightKg: Double?
+
+    var body: some View {
+        DashboardCard(title: "目標", systemImage: "flag") {
+            Text("目標体重と期限を決めると、目標に届く日の予測と、目標に合わせた摂取カロリーの目安を表示します。")
+                .font(.callout)
+                .fixedSize(horizontal: false, vertical: true)
+            NavigationLink {
+                EditGoalView(goal: nil, currentWeightKg: currentWeightKg)
+            } label: {
+                Label("目標を決める", systemImage: "plus")
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.borderedProminent)
+        }
+    }
+}
+
+// MARK: - 記録がまだないとき
+
+struct EmptyRecordsCard: View {
+    let onAdd: () -> Void
+
+    var body: some View {
+        ContentUnavailableView {
+            Label("まだ記録がありません", systemImage: "scalemass")
+        } description: {
+            Text("最初の体重を記録すると、ここにグラフが表示されます。\(GoalForecaster.minimumRecordedDays) 日分たまると、ペースの直線と目標に届く日の予測も出ます。")
+        } actions: {
+            Button("体重を記録する", action: onAdd)
+                .buttonStyle(.borderedProminent)
+        }
+        .background(.background.secondary, in: .rect(cornerRadius: 20))
     }
 }
 
@@ -150,35 +270,29 @@ struct IntakeCard: View {
 
     var body: some View {
         DashboardCard(title: "1 日の摂取カロリーの目安", systemImage: "fork.knife") {
-            Text("\(Int(intake.targetKcal.rounded())) kcal")
-                .font(.largeTitle.bold().monospacedDigit())
-            Text("消費カロリーの目安 \(Int(intake.tdeeKcal.rounded())) kcal")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-            sourceText
-                .font(.caption)
-                .foregroundStyle(.secondary)
+            MetricView(
+                value: intake.targetKcal.rounded(),
+                fractionLength: 0,
+                unit: "kcal",
+                caption: Text("消費カロリーの目安 \(Int(intake.tdeeKcal.rounded())) kcal")
+            )
+            NoticeLabel(text: sourceText)
             if intake.isRaisedToMinimum {
-                Label("体のために、これより少なくしないよう下限に合わせています。そのぶん、目標のペースより少しゆっくりになります。", systemImage: "info.circle")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                NoticeLabel("体のために、これより少なくしないよう下限に合わせています。そのぶん、目標のペースより少しゆっくりになります。")
             }
         }
     }
-}
 
-extension IntakeCard {
     /// 消費カロリーを何から計算したかの説明
-    @ViewBuilder
-    fileprivate var sourceText: some View {
+    private var sourceText: Text {
         switch energyChoice?.source {
         case .healthKit(let averageActiveEnergyKcal, let days)?:
-            Text("（基礎代謝と、ヘルスケアの実績：直近 \(days) 日の平均アクティブエネルギー \(Int(averageActiveEnergyKcal.rounded())) kcal から計算）")
+            return Text("基礎代謝と、ヘルスケアの実績（直近 \(days) 日の平均アクティブエネルギー \(Int(averageActiveEnergyKcal.rounded())) kcal）から計算しています。")
         case .activityLevel?, nil:
             if energyChoice?.isFallback == true {
-                Text("（基礎代謝と活動量から計算。ヘルスケアの運動データが 7 日分たまると、実績で計算します）")
+                return Text("基礎代謝と活動量から計算しています。ヘルスケアの運動データが 7 日分たまると、実績で計算します。")
             } else {
-                Text("（基礎代謝と活動量から計算）")
+                return Text("基礎代謝と活動量から計算しています。")
             }
         }
     }
@@ -195,11 +309,13 @@ struct GoalCorrectionCard: View {
         DashboardCard(title: "目標のペースが少し速めです", systemImage: "exclamationmark.triangle", tint: .orange) {
             Text("体への負担が少ないペースは、週 \(abs(correction.maxWeeklyChangeKg), format: kgFormat) kg くらいまでが目安です。次のどちらかにすると、無理なく続けやすくなります。")
                 .font(.callout)
+                .fixedSize(horizontal: false, vertical: true)
 
             Button {
                 goal.deadline = correction.suggestedDeadline
             } label: {
                 Label("期限を \(correction.suggestedDeadline, format: .dateTime.year().month().day()) にのばす", systemImage: "calendar")
+                    .frame(maxWidth: .infinity, alignment: .leading)
             }
             .buttonStyle(.bordered)
 
@@ -208,6 +324,7 @@ struct GoalCorrectionCard: View {
                     goal.targetWeightKg = suggestedKg
                 } label: {
                     Label("今の期限までの目標を \(suggestedKg, format: kgFormat) kg にする", systemImage: "scalemass")
+                        .frame(maxWidth: .infinity, alignment: .leading)
                 }
                 .buttonStyle(.bordered)
             }
@@ -232,10 +349,12 @@ struct FoodHintCard: View {
         DashboardCard(title: "ちょっとしたヒント", systemImage: "lightbulb", tint: .yellow) {
             // 細かすぎる数字は気になるので、10 kcal 単位に丸めて「約」をつける
             let roundedKcal = Int((overPlanKcalPerDay / 10).rounded() * 10)
-            Text("体重の流れから見ると、計画より 1 日あたり\(foodPhrase)（約 \(roundedKcal) kcal）ほど多めのようです。")
+            Text("体重の動きから見ると、計画より 1 日あたり\(foodPhrase)（約 \(roundedKcal) kcal）ほど多めのようです。")
+                .fixedSize(horizontal: false, vertical: true)
             Text("おやつや飲み物を少し控えるなど、できそうなことから 1 つ試してみませんか。")
                 .font(.callout)
                 .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
         }
     }
 }

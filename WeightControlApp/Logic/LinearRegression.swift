@@ -38,3 +38,33 @@ nonisolated enum LinearRegression {
         return LinearFit(slope: slope, intercept: meanY - slope * meanX)
     }
 }
+
+extension LinearRegression {
+    /// 傾きの「標準誤差」：点が直線のまわりにどれくらいばらついているかから見た、傾きの不確かさ。
+    ///
+    ///     標準誤差 ＝ √( 残差の 2 乗の合計 ÷ (点の数 − 2) ÷ x のずれの 2 乗の合計 )
+    ///
+    /// - 残差：各点と直線との縦のずれ
+    /// - 点が直線にぴったり乗っていれば 0、ばらつくほど大きくなります。
+    /// - 点が多く、x（日数）が広くばらけているほど小さくなります（＝傾きを信じやすい）。
+    ///
+    /// 点が 3 つ未満、または x がすべて同じなら `nil`。
+    static func slopeStandardError(_ samples: [(x: Double, y: Double)], fit: LinearFit) -> Double? {
+        guard samples.count >= 3 else { return nil }
+
+        let count = Double(samples.count)
+        let meanX = samples.reduce(0) { $0 + $1.x } / count
+        var sumSquaredResiduals = 0.0
+        var sumXX = 0.0
+        for sample in samples {
+            let residual = sample.y - fit.value(at: sample.x)
+            sumSquaredResiduals += residual * residual
+            let dx = sample.x - meanX
+            sumXX += dx * dx
+        }
+        guard sumXX > 0 else { return nil }
+
+        let residualVariance = sumSquaredResiduals / (count - 2)
+        return (residualVariance / sumXX).squareRoot()
+    }
+}

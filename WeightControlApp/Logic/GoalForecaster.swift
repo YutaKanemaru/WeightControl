@@ -2,9 +2,9 @@ import Foundation
 
 /// 予測をどのくらい信じてよいか。
 nonisolated enum ForecastConfidence: Equatable, Sendable {
-    /// 記録が 14 日未満。画面では「参考値」と表示する想定です。
-    case reference
-    /// 記録が 14 日以上。
+    /// 記録が 7 日未満。点が少なく日々のブレの影響を大きく受けるので、画面では「精度が低め」の注意を出します。
+    case low
+    /// 記録が 7 日以上。
     case reliable
 }
 
@@ -58,6 +58,8 @@ nonisolated enum GoalForecastResult: Equatable, Sendable {
 nonisolated struct WeightPaceEstimate: Equatable, Sendable {
     /// いちばん新しい記録の日（0 時）
     var latestDate: Date
+    /// 直線を引くのに使った期間（直近 21 日）のうち、いちばん古い記録の日（0 時）。グラフに直線を描く始点です。
+    var firstDate: Date
     /// 直線を引くのに使った期間（直近 21 日）に記録した日数
     var recordedDays: Int
     /// 今の体重の目安（kg）＝ 直線の、いちばん新しい記録の日の値
@@ -82,12 +84,16 @@ nonisolated struct WeightPaceEstimate: Equatable, Sendable {
 /// その線を出発点にすると、予測が実際より遅く・重く出てしまいます。
 /// 3 週間分の体重 20 点ほどに直線を当てはめれば、1 日だけの上下はほかの日と打ち消し合うので、
 /// 遅れなしで、しかも 1 日のブレに振り回されにくい「今の体重」と「ペース」が出せます。
-/// （グラフのなめらかな線は、見た目のために EMA のまま残しています）
+/// （グラフにもこの直線をそのまま描きます。EMA はほめるメッセージだけに使います）
+///
+/// ## 記録が少ないとき
+/// 記録 3 日から予測を出します（2 点だと「2 つの点を結んだだけ」になるため 3 点から）。
+/// 7 日未満のうちは 1 日のブレで直線の傾きが大きく変わるので、`confidence` を `.low` にして、画面で注意を出します。
 nonisolated enum GoalForecaster {
-    /// 予測を出すのに必要な記録日数
-    static let minimumRecordedDays = 7
-    /// この日数以上あれば「参考値」ではなくなる
-    static let reliableRecordedDays = 14
+    /// 予測を出すのに必要な記録日数（直線を引くのに最低限の点の数）
+    static let minimumRecordedDays = 3
+    /// この日数以上あれば「精度が低め」の注意を外す（最初の 1 週間は注意を出す）
+    static let reliableRecordedDays = 7
     /// ペースの計算に使う期間（日）。直近 3 週間の記録を、あるだけ使います。
     static let regressionWindowDays = 21
     /// 今の体重の目安と目標の差がこれ以下なら「届いた」とみなす（kg）
@@ -106,19 +112,20 @@ nonisolated enum GoalForecaster {
         }
     }
 
-    /// 直近 21 日の体重に直線を引いて、今の体重の目安とペースを出します。記録が 7 日未満なら nil。
+    /// 直近 21 日の体重に直線を引いて、今の体重の目安とペースを出します。記録が 3 日未満なら nil。
     static func paceEstimate(points: [WeightPoint], calendar: Calendar = .current) -> WeightPaceEstimate? {
         let window = recentDailyWeights(points, calendar: calendar)
-        guard window.count >= minimumRecordedDays, let latest = window.last else { return nil }
+        guard window.count >= minimumRecordedDays, let first = window.first, let latest = window.last else { return nil }
 
         // x = いちばん新しい日から何日前か（マイナス〜0）、y = その日の体重
         let samples = window.map { point in
             (x: Double(DayMath.days(from: latest.date, to: point.date, calendar: calendar)), y: point.weightKg)
         }
-        // 記録が 7 日以上あれば x は必ずばらけるので nil にはならないが、念のため「最新の体重・傾き 0」とする
+        // 記録が 3 日以上あれば x は必ずばらけるので nil にはならないが、念のため「最新の体重・傾き 0」とする
         let fit = LinearRegression.fit(samples) ?? LinearFit(slope: 0, intercept: latest.weightKg)
         return WeightPaceEstimate(
             latestDate: latest.date,
+            firstDate: first.date,
             recordedDays: window.count,
             currentWeightKg: fit.value(at: 0),
             dailyChangeKg: fit.slope
@@ -159,7 +166,7 @@ nonisolated enum GoalForecaster {
         }
 
         return .available(GoalForecast(
-            confidence: estimate.recordedDays >= reliableRecordedDays ? .reliable : .reference,
+            confidence: estimate.recordedDays >= reliableRecordedDays ? .reliable : .low,
             recordedDays: estimate.recordedDays,
             latestDate: estimate.latestDate,
             currentWeightKg: estimate.currentWeightKg,

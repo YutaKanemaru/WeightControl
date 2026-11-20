@@ -24,9 +24,14 @@ nonisolated struct DashboardGoal: Equatable, Sendable {
 nonisolated struct HomeDashboard: Equatable, Sendable {
     /// グラフ用：1 日 1 件の実績とトレンド（古い順）
     var trend: [TrendPoint]
+    /// グラフ用：直近 3 週間の測った体重に引いた直線（実線）。記録が 3 日未満なら空。
+    var paceLine: [WeightPoint]
+    /// 直線を引いた記録の日数（直近 21 日のうち記録した日数）。直線がなければ 0。
+    /// 7 日未満のうちは、グラフに「精度が低め」の注意を出すのに使います。
+    var paceRecordedDays: Int
     /// 今の体重の目安（kg）。記録がなければ nil。
-    /// 記録が 7 日以上あれば、直近 3 週間の体重に引いた直線の今日の値（`GoalForecaster.paceEstimate`）。
-    /// 7 日未満なら、ならした体重（トレンド）の最新の値。
+    /// 記録が 3 日以上あれば、直近 3 週間の体重に引いた直線の今日の値（`GoalForecaster.paceEstimate`）。
+    /// 3 日未満なら、ならした体重（トレンド）の最新の値。
     /// 目標までの残り・進み具合・安全チェック・基礎代謝の計算に使います。
     var currentWeightKg: Double?
     /// 連続記録日数
@@ -58,6 +63,8 @@ nonisolated struct HomeDashboard: Equatable, Sendable {
 nonisolated enum HomeDashboardBuilder {
     /// 「ここ最近のトレンドの変化」を何日分で見るか
     static let trendChangeWindowDays = 7
+    /// 食べ物ヒントを出すのに必要な記録日数。水分の増減に振り回されないよう、予測より長めに見ます。
+    static let foodHintMinimumRecordedDays = 14
     /// これより小さい差なら「目標＝キープ」とみなす（kg）
     static let maintainToleranceKg = 0.1
 
@@ -71,8 +78,10 @@ nonisolated enum HomeDashboardBuilder {
         calendar: Calendar = .current
     ) -> HomeDashboard {
         let trend = WeightTrendCalculator.trend(points, calendar: calendar)
-        // 今の体重の目安：直線（記録 7 日以上）があればその今日の値、なければならした体重
-        let currentKg = currentWeightEstimate(points: points, trend: trend, calendar: calendar)
+        // 今の体重の目安：直線（記録 3 日以上）があればその今日の値、なければならした体重
+        let pace = GoalForecaster.paceEstimate(points: points, calendar: calendar)
+        let currentKg = pace?.currentWeightKg ?? trend.last?.trendKg
+        let paceLine = pace.map { ForecastLineBuilder.fittedLine(for: $0, calendar: calendar) } ?? []
         let streak = WeighInStreakCalculator.currentStreak(dates: points.map(\.date), today: now, calendar: calendar)
 
         // 目標の向きと進み具合
@@ -156,12 +165,12 @@ nonisolated enum HomeDashboardBuilder {
         }
 
         // 計画より食べすぎていないか（体重の動きから逆算）。
-        // 水分の増減に振り回されないよう、予測が「参考」でなくなる 14 日分の記録があるときだけ出します。
+        // 水分の増減に振り回されないよう、14 日分の記録があるときだけ出します。
         // 増量が目標のときは「計画より多い」は悪いことではないので出しません。
         var overPlan: Double?
         var hint: CalorieHint?
         if case .available(let available)? = forecast,
-           available.confidence == .reliable,
+           available.recordedDays >= foodHintMinimumRecordedDays,
            direction != .gain,
            safety != nil {
             let estimate = EnergyBalanceEstimator.estimate(
@@ -178,6 +187,8 @@ nonisolated enum HomeDashboardBuilder {
 
         return HomeDashboard(
             trend: trend,
+            paceLine: paceLine,
+            paceRecordedDays: pace?.recordedDays ?? 0,
             currentWeightKg: currentKg,
             streakDays: streak,
             praise: praise,
@@ -202,7 +213,7 @@ nonisolated enum HomeDashboardBuilder {
         return latest.trendKg - baseline.trendKg
     }
 
-    /// 今の体重の目安（kg）。記録が 7 日以上あれば直近 3 週間の直線の今日の値、なければならした体重の最新の値。
+    /// 今の体重の目安（kg）。直近 3 週間の直線（`GoalForecaster.paceEstimate`）が引ければその今日の値、なければならした体重の最新の値。
     /// 記録がなければ nil。ほめる通知（`PraiseNotificationPlanner`）でも同じ考え方を使います。
     ///
     /// - Parameter trend: すでに計算したトレンドがあれば渡す（二度計算しないため）。nil ならここで計算します。
