@@ -118,10 +118,12 @@ nonisolated enum PraiseMessageGenerator {
         let isTowardGoal = (direction == .lose) == (changeKg < 0)
         guard isTowardGoal else { return encouragement }
 
+        // 「トレンド」という言葉は使わず、「この 1 週間の流れ」と言いかえる（測った体重と別の数字があると迷うため）。
+        // ホーム画面では 7 日前のトレンドと比べた変化を渡しています（HomeDashboardBuilder.trendChangeWindowDays）。
         let kgText = String(format: "%.1f", abs(changeKg))
         let text = direction == .lose
-            ? String(localized: "トレンドが\(kgText)kg下がっています。いい調子です！")
-            : String(localized: "トレンドが\(kgText)kg上がっています。いい調子です！")
+            ? String(localized: "この1週間の流れで\(kgText)kg下がっています。いい調子です！")
+            : String(localized: "この1週間の流れで\(kgText)kg上がっています。いい調子です！")
         return PraiseMessage(kind: .trendTowardGoal(changeKg: changeKg), text: text)
     }
 

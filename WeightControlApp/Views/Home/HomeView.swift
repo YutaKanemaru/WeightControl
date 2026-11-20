@@ -93,14 +93,14 @@ struct HomeView: View {
         }
     }
 
-    /// いまの体重・トレンド・目標まで、をひと目で
+    /// いまの体重・目標まで、をひと目で
+    ///
+    /// トレンド体重（ならした体重）の数字は出しません。測った体重と違う数字が並ぶと、どちらを見ればよいか迷うためです。
+    /// ただし「目標まで」は、日によって増えたり減ったりしないよう、中の計算ではトレンド体重を使います。
     private func summary(dashboard: HomeDashboard, goal: WeightGoal?) -> some View {
         HStack(alignment: .top) {
             if let latest = entries.first {
                 summaryItem("最新の体重", kg: latest.weightKg)
-            }
-            if let trendKg = dashboard.currentTrendKg {
-                summaryItem("トレンド", kg: trendKg)
             }
             if let goal, let trendKg = dashboard.currentTrendKg {
                 summaryItem("目標まで", kg: abs(goal.targetWeightKg - trendKg))
