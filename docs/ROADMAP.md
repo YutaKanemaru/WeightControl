@@ -86,3 +86,7 @@
 ## 次にやること
 
 フェーズ 3〜7 がそろったので、ホームの推奨カロリーに、ヘルスケアのアクティブエネルギーから出した消費カロリー（`CalorieCalculator.totalDailyEnergyExpenditure(bmrKcal:averageActiveEnergyKcal:)`）を使えるようにする。
+
+## 動作確認用のデモデータ
+
+予測・カロリーの表示を画面で確かめるために、設定タブ（Debug ビルドのみ）からデモデータを読み込めます。シナリオごとの入力データ・計算式・画面に出るはずの値は [DEMO_DATA.md](DEMO_DATA.md) にまとめています。
