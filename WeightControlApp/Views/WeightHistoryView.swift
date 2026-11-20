@@ -1,12 +1,12 @@
 import SwiftUI
 import SwiftData
 
-/// アプリの最初の画面：体重の履歴一覧。
+/// 「記録」タブの画面：体重の履歴一覧。
 ///
 /// - `@Query` が SwiftData から記録を読み出し、データが増えたり消えたりすると画面を自動で描き直します。
 /// - 右上の「＋」で入力画面（`AddWeightEntryView`）をシート（下から出てくる画面）で開きます。
 /// - 行を左にスワイプするか、「編集」ボタンから記録を削除できます。
-struct ContentView: View {
+struct WeightHistoryView: View {
     /// 保存・削除の窓口。アプリ全体で 1 つの「データベースへの接続」を共有しています。
     @Environment(\.modelContext) private var modelContext
 
@@ -130,11 +130,11 @@ struct WeightEntryRow: View {
         let date = Calendar.current.date(byAdding: .day, value: -daysAgo, to: .now)!
         container.mainContext.insert(WeightEntry(date: date, weightKg: weightKg))
     }
-    return ContentView()
+    return WeightHistoryView()
         .modelContainer(container)
 }
 
 #Preview("記録なし") {
-    ContentView()
+    WeightHistoryView()
         .modelContainer(for: WeightEntry.self, inMemory: true)
 }
