@@ -24,8 +24,11 @@ nonisolated struct DashboardGoal: Equatable, Sendable {
 nonisolated struct HomeDashboard: Equatable, Sendable {
     /// グラフ用：1 日 1 件の実績とトレンド（古い順）
     var trend: [TrendPoint]
-    /// いまのトレンド体重（kg）。記録がなければ nil。
-    var currentTrendKg: Double?
+    /// 今の体重の目安（kg）。記録がなければ nil。
+    /// 記録が 7 日以上あれば、直近 3 週間の体重に引いた直線の今日の値（`GoalForecaster.paceEstimate`）。
+    /// 7 日未満なら、ならした体重（トレンド）の最新の値。
+    /// 目標までの残り・進み具合・安全チェック・基礎代謝の計算に使います。
+    var currentWeightKg: Double?
     /// 連続記録日数
     var streakDays: Int
     /// いちばん伝えたい「ほめる」メッセージ
@@ -68,7 +71,9 @@ nonisolated enum HomeDashboardBuilder {
         calendar: Calendar = .current
     ) -> HomeDashboard {
         let trend = WeightTrendCalculator.trend(points, calendar: calendar)
-        let currentKg = trend.last?.trendKg
+        // 今の体重の目安：直線（記録 7 日以上）があればその今日の値、なければならした体重
+        let currentKg = GoalForecaster.paceEstimate(points: points, calendar: calendar)?.currentWeightKg
+            ?? trend.last?.trendKg
         let streak = WeighInStreakCalculator.currentStreak(dates: points.map(\.date), today: now, calendar: calendar)
 
         // 目標の向きと進み具合
@@ -174,7 +179,7 @@ nonisolated enum HomeDashboardBuilder {
 
         return HomeDashboard(
             trend: trend,
-            currentTrendKg: currentKg,
+            currentWeightKg: currentKg,
             streakDays: streak,
             praise: praise,
             forecast: forecast,

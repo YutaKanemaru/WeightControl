@@ -51,31 +51,31 @@ struct DemoScenarioTests {
 
     // MARK: - ① 順調
 
-    @Test("① 順調：期限より前（52 日後）に届く見込み")
+    @Test("① 順調：期限より前（27 日後）に届く見込み")
     func onTrack() throws {
         let result = try dashboard(.onTrack)
-        #expect(isApproximately(try #require(result.currentTrendKg), 70.661994, tolerance: 0.001))
+        #expect(isApproximately(try #require(result.currentWeightKg), 70.032468, tolerance: 0.001))
         #expect(result.streakDays == 28)
 
         let forecast = try available(result.forecast)
         #expect(forecast.confidence == .reliable)
-        #expect(forecast.recordedDays == 28)
-        #expect(isApproximately(forecast.weeklyChangeKg, -0.362114, tolerance: 0.001))
-        #expect(forecast.outcome == .willReach(on: day(52)))
+        #expect(forecast.recordedDays == 21)
+        #expect(isApproximately(forecast.weeklyChangeKg, -0.527273, tolerance: 0.001))
+        #expect(forecast.outcome == .willReach(on: day(27)))
         #expect(forecast.deadlineStatus == .onTrack)
 
-        #expect(result.forecastLine.count == 9)
-        #expect(result.forecastLine.last == WeightPoint(date: day(52), weightKg: 68.0))
+        #expect(result.forecastLine.count == 5)
+        #expect(result.forecastLine.last == WeightPoint(date: day(27), weightKg: 68.0))
 
         guard case .safe(let required)? = result.safety else {
             Issue.record("safe のはず: \(String(describing: result.safety))")
             return
         }
-        #expect(isApproximately(required, -0.266199, tolerance: 0.001))
+        #expect(isApproximately(required, -0.203247, tolerance: 0.001))
 
         let intake = try #require(result.intake)
-        #expect(isApproximately(intake.tdeeKcal, 2198.79, tolerance: 0.01))
-        #expect(isApproximately(intake.targetKcal, 1924.985, tolerance: 0.01))
+        #expect(isApproximately(intake.tdeeKcal, 2190.1339, tolerance: 0.01))
+        #expect(isApproximately(intake.targetKcal, 1981.0801, tolerance: 0.01))
         #expect(!intake.isRaisedToMinimum)
 
         // 計画より速く減っているので、食べ物ヒントは出ない
@@ -91,37 +91,37 @@ struct DemoScenarioTests {
 
     // MARK: - ② 横ばい
 
-    @Test("② 横ばい：目標に向かう流れが見えず、食べ物ヒント（ごはん 1 杯分）が出る")
+    @Test("② 横ばい：目標に向かう流れが見えず、食べ物ヒント（シュークリーム 1 個分）が出る")
     func plateau() throws {
         let result = try dashboard(.plateau)
-        #expect(isApproximately(try #require(result.currentTrendKg), 69.985073, tolerance: 0.001))
+        #expect(isApproximately(try #require(result.currentWeightKg), 69.961039, tolerance: 0.001))
         #expect(result.streakDays == 28)
 
         let forecast = try available(result.forecast)
         #expect(forecast.confidence == .reliable)
-        #expect(isApproximately(forecast.weeklyChangeKg, -0.003230, tolerance: 0.001))
+        #expect(isApproximately(forecast.weeklyChangeKg, -0.027273, tolerance: 0.001))
         #expect(forecast.outcome == .notApproaching)
         guard case .behind(let needed)? = forecast.deadlineStatus else {
             Issue.record("behind のはず: \(String(describing: forecast.deadlineStatus))")
             return
         }
-        #expect(isApproximately(needed, -0.232463, tolerance: 0.001))
+        #expect(isApproximately(needed, -0.231061, tolerance: 0.001))
 
         // 予測線は期限（120 日後）まで、ほぼ横ばい
         #expect(result.forecastLine.last?.date == day(120))
-        #expect(isApproximately(try #require(result.forecastLine.last?.weightKg), 69.9297, tolerance: 0.001))
+        #expect(isApproximately(try #require(result.forecastLine.last?.weightKg), 69.49351, tolerance: 0.001))
 
         let intake = try #require(result.intake)
-        #expect(isApproximately(intake.tdeeKcal, 1621.621, tolerance: 0.01))
-        #expect(isApproximately(intake.targetKcal, 1382.516, tolerance: 0.01))
+        #expect(isApproximately(intake.tdeeKcal, 1621.3325, tolerance: 0.01))
+        #expect(isApproximately(intake.targetKcal, 1383.6701, tolerance: 0.01))
         #expect(!intake.isRaisedToMinimum)
 
-        #expect(isApproximately(try #require(result.overPlanKcalPerDay), 235.782, tolerance: 0.01))
+        #expect(isApproximately(try #require(result.overPlanKcalPerDay), 209.6104, tolerance: 0.01))
         guard case .over(let food, let count, _)? = result.calorieHint else {
             Issue.record("食べ物ヒントが出るはず: \(String(describing: result.calorieHint))")
             return
         }
-        #expect(food.id == "rice")
+        #expect(food.id == "cream_puff")
         #expect(count == 1)
 
         #expect(result.praise.kind == .trendSteady)
@@ -129,45 +129,45 @@ struct DemoScenarioTests {
 
     // MARK: - ③ 速すぎる目標
 
-    @Test("③ 速すぎる：修正案（81 日後・77.9 kg）が出て、カロリーは基礎代謝に合わせる")
+    @Test("③ 速すぎる：修正案（77 日後・77.4 kg）が出て、カロリーは基礎代謝に合わせる")
     func tooAggressive() throws {
         let result = try dashboard(.tooAggressive)
-        #expect(isApproximately(try #require(result.currentTrendKg), 81.297672, tolerance: 0.001))
+        #expect(isApproximately(try #require(result.currentWeightKg), 80.825974, tolerance: 0.001))
         #expect(result.streakDays == 21)
 
         let forecast = try available(result.forecast)
         #expect(forecast.confidence == .reliable)
         #expect(forecast.recordedDays == 21)
-        #expect(isApproximately(forecast.weeklyChangeKg, -0.254373, tolerance: 0.001))
-        #expect(forecast.outcome == .willReach(on: day(256)))
+        #expect(isApproximately(forecast.weeklyChangeKg, -0.421818, tolerance: 0.001))
+        #expect(forecast.outcome == .willReach(on: day(147)))
         guard case .behind(let needed)? = forecast.deadlineStatus else {
             Issue.record("behind のはず: \(String(describing: forecast.deadlineStatus))")
             return
         }
-        #expect(isApproximately(needed, -2.169457, tolerance: 0.001))
+        #expect(isApproximately(needed, -2.059394, tolerance: 0.001))
 
         guard case .tooAggressive(let correction)? = result.safety else {
             Issue.record("tooAggressive のはず: \(String(describing: result.safety))")
             return
         }
-        #expect(isApproximately(try #require(correction.requiredWeeklyChangeKg), -2.169457, tolerance: 0.001))
-        #expect(isApproximately(correction.maxWeeklyChangeKg, -0.812977, tolerance: 0.001))
-        #expect(correction.suggestedDeadline == day(81))
-        #expect(correction.suggestedGoalWeightKg == 77.9)
+        #expect(isApproximately(try #require(correction.requiredWeeklyChangeKg), -2.059394, tolerance: 0.001))
+        #expect(isApproximately(correction.maxWeeklyChangeKg, -0.808260, tolerance: 0.001))
+        #expect(correction.suggestedDeadline == day(77))
+        #expect(correction.suggestedGoalWeightKg == 77.4)
 
         let intake = try #require(result.intake)
-        #expect(isApproximately(intake.tdeeKcal, 2084.072, tolerance: 0.01))
-        #expect(isApproximately(intake.targetKcal, 1736.727, tolerance: 0.01))
+        #expect(isApproximately(intake.tdeeKcal, 2078.4117, tolerance: 0.01))
+        #expect(isApproximately(intake.targetKcal, 1732.0097, tolerance: 0.01))
         #expect(intake.isRaisedToMinimum)
 
         // 計画（上限ペース 週 −0.81 kg）より減り方がゆっくりなので、ヒントが出る
-        #expect(isApproximately(try #require(result.overPlanKcalPerDay), 574.564, tolerance: 0.01))
+        #expect(isApproximately(try #require(result.overPlanKcalPerDay), 397.4827, tolerance: 0.01))
         guard case .over(let food, let count, _)? = result.calorieHint else {
             Issue.record("食べ物ヒントが出るはず: \(String(describing: result.calorieHint))")
             return
         }
-        #expect(food.id == "sake")
-        #expect(count == 3)
+        #expect(food.id == "french_fries")
+        #expect(count == 1)
 
         guard case .trendTowardGoal(let change) = result.praise.kind else {
             Issue.record("trendTowardGoal のはず: \(result.praise.kind)")
@@ -178,32 +178,28 @@ struct DemoScenarioTests {
 
     // MARK: - ④ 記録が少ない
 
-    @Test("④ 記録 10 日：予測は「参考値」、食べ物ヒントは出ない")
+    @Test("④ 記録 10 日：予測は「参考値」（48 日後）、食べ物ヒントは出ない")
     func fewRecords() throws {
         let result = try dashboard(.fewRecords)
-        #expect(isApproximately(try #require(result.currentTrendKg), 59.852810, tolerance: 0.001))
+        #expect(isApproximately(try #require(result.currentWeightKg), 59.574545, tolerance: 0.001))
         #expect(result.streakDays == 10)
 
         let forecast = try available(result.forecast)
         #expect(forecast.confidence == .reference)
         #expect(forecast.recordedDays == 10)
-        #expect(isApproximately(forecast.weeklyChangeKg, -0.126573, tolerance: 0.001))
-        #expect(forecast.outcome == .willReach(on: day(158)))
-        guard case .behind(let needed)? = forecast.deadlineStatus else {
-            Issue.record("behind のはず: \(String(describing: forecast.deadlineStatus))")
-            return
-        }
-        #expect(isApproximately(needed, -0.221885, tolerance: 0.001))
+        #expect(isApproximately(forecast.weeklyChangeKg, -0.381818, tolerance: 0.001))
+        #expect(forecast.outcome == .willReach(on: day(48)))
+        #expect(forecast.deadlineStatus == .onTrack)
 
         guard case .safe(let required)? = result.safety else {
             Issue.record("safe のはず: \(String(describing: result.safety))")
             return
         }
-        #expect(isApproximately(required, -0.221885, tolerance: 0.001))
+        #expect(isApproximately(required, -0.200242, tolerance: 0.001))
 
         let intake = try #require(result.intake)
-        #expect(isApproximately(intake.tdeeKcal, 1735.976, tolerance: 0.01))
-        #expect(isApproximately(intake.targetKcal, 1507.751, tolerance: 0.01))
+        #expect(isApproximately(intake.tdeeKcal, 1732.15, tolerance: 0.01))
+        #expect(isApproximately(intake.targetKcal, 1526.1864, tolerance: 0.01))
         #expect(!intake.isRaisedToMinimum)
 
         #expect(result.overPlanKcalPerDay == nil)
