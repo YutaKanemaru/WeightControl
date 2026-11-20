@@ -20,6 +20,11 @@ struct SettingsView: View {
                 } footer: {
                     Text("このアプリは医療アドバイスではありません。体調に不安があるときは医師に相談してください。ご利用は自己責任でお願いします。")
                 }
+
+                #if DEBUG
+                // 予測やカロリーの表示を確かめるためのデモデータ（Xcode から実行したときだけ表示）
+                DemoDataSection()
+                #endif
             }
             .navigationTitle("設定")
         }
