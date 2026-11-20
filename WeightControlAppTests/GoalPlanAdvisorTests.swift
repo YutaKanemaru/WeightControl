@@ -60,7 +60,7 @@ struct GoalPlanAdvisorTests {
     @Test("期限までの日数は、過ぎていれば 0")
     func daysLeftClampsAtZero() {
         #expect(GoalPlanAdvisor.daysLeft(until: day(10), now: day(0), calendar: calendar) == 10)
-        #expect(GoalPlanAdvisor.daysLeft(until: day(0, hour: 23), now: day(0), calendar: calendar) == 0)
+        #expect(GoalPlanAdvisor.daysLeft(until: TestCalendar.day(0, hour: 23), now: day(0), calendar: calendar) == 0)
         #expect(GoalPlanAdvisor.daysLeft(until: day(-3), now: day(0), calendar: calendar) == 0)
     }
 }
