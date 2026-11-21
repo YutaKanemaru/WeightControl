@@ -15,10 +15,14 @@ struct GoalDraft {
     }
 }
 
-/// 目標の入力欄（目標体重・期限）。初回設定と設定画面の両方で使う部品です。
+/// 目標の入力欄（目標体重・期限）と、入力中の目標が無理のないペースかのひとこと。
+/// 初回設定・設定画面・ホームの修正案から開く画面で使う部品です。
+///
+/// ペースの判定は Logic の `GoalPlanAdvisor`（中身は `GoalSafetyChecker`）に任せ、
+/// ここでは結果に合わせて文言と色、修正案のボタンを出し分けるだけにしています。
 struct GoalFormSections: View {
     @Binding var draft: GoalDraft
-    /// いまの体重（いちばん新しい記録）。記録がなければ nil。
+    /// いまの体重の目安（kg）。ペースの判定に使う。記録がなければ nil。
     let currentWeightKg: Double?
     let targetWeightErrorMessage: String?
     let deadlineErrorMessage: String?
@@ -35,31 +39,105 @@ struct GoalFormSections: View {
                 TextField("目標体重", text: $draft.targetWeightText, prompt: Text(placeholder))
                     .keyboardType(.decimalPad)
                     .font(.title3.monospacedDigit())
+                    .accessibilityLabel(Text("目標体重（キログラム）"))
                 Text(verbatim: "kg")
                     .foregroundStyle(.secondary)
+                    .accessibilityHidden(true)
             }
         } header: {
             Text("目標体重")
         } footer: {
             if let targetWeightErrorMessage {
-                Text(targetWeightErrorMessage)
-                    .foregroundStyle(.red)
+                FieldErrorText(targetWeightErrorMessage)
             } else if let currentWeightKg {
-                Text("いまの体重は \(currentWeightKg, format: .number.precision(.fractionLength(1))) kg です。")
+                Text("いまの体重の目安は \(currentWeightKg, format: .number.precision(.fractionLength(1))) kg です。")
             }
         }
 
         Section {
-            DatePicker("期限", selection: $draft.deadline, in: tomorrow..., displayedComponents: .date)
+            DatePicker(selection: $draft.deadline, in: tomorrow..., displayedComponents: .date) {
+                Label("期限", systemImage: "calendar.badge.clock")
+            }
         } header: {
             Text("いつまでに")
         } footer: {
             if let deadlineErrorMessage {
-                Text(deadlineErrorMessage)
-                    .foregroundStyle(.red)
-            } else {
-                Text("無理のないペースかどうかは、今後のアップデートでお知らせできるようになります。")
+                FieldErrorText(deadlineErrorMessage)
             }
+        }
+
+        paceSection
+    }
+
+    // MARK: - ペースのひとこと
+
+    private var advice: GoalPlanAdvice {
+        let targetWeightKg = try? WeightInputParser.parse(draft.targetWeightText).get()
+        return GoalPlanAdvisor.advice(
+            targetWeightKg: targetWeightKg,
+            currentWeightKg: currentWeightKg,
+            deadline: draft.deadline,
+            now: .now
+        )
+    }
+
+    @ViewBuilder
+    private var paceSection: some View {
+        switch advice {
+        case .needsTargetWeight:
+            EmptyView()
+        case .needsCurrentWeight:
+            Section("ペースの目安") {
+                NoticeLabel("体重を記録すると、無理のないペースかどうかをお知らせします。")
+            }
+        case .alreadyAtGoal:
+            Section("ペースの目安") {
+                NoticeLabel("いまの体重は、もう目標とほぼ同じです。この体重をキープしていきましょう。", style: .success)
+            }
+        case .comfortable(let weeklyChangeKg, let daysLeft):
+            Section {
+                NoticeLabel(text: Text("無理のないペースです。1 週間に \(abs(weeklyChangeKg), format: .number.precision(.fractionLength(1))) kg ずつ、あと \(daysLeft) 日です。"), style: .success)
+            } header: {
+                Text("ペースの目安")
+            } footer: {
+                Text("減らすときは 1 週間に体重の 1 %、増やすときは 0.5 % までを目安にしています。医療的な判断ではありません。")
+            }
+        case .tooFast(let correction):
+            Section {
+                NoticeLabel(text: tooFastMessage(correction), style: .caution)
+                Button {
+                    draft.deadline = correction.suggestedDeadline
+                } label: {
+                    Label {
+                        Text("期限を \(Text(correction.suggestedDeadline, format: .dateTime.year().month().day())) にする")
+                    } icon: {
+                        Image(systemName: "calendar.badge.plus")
+                    }
+                }
+                if let suggestedKg = correction.suggestedGoalWeightKg {
+                    Button {
+                        draft.targetWeightText = suggestedKg.formatted(.number.precision(.fractionLength(1)).grouping(.never))
+                    } label: {
+                        Label {
+                            Text("目標体重を \(suggestedKg, format: .number.precision(.fractionLength(1))) kg にする")
+                        } icon: {
+                            Image(systemName: "scalemass")
+                        }
+                    }
+                }
+            } header: {
+                Text("ペースの目安")
+            } footer: {
+                Text("ゆっくりのほうが、リバウンドしにくく続けやすくなります。このままの目標で保存することもできます。医療的な判断ではありません。")
+            }
+        }
+    }
+
+    private func tooFastMessage(_ correction: GoalCorrection) -> Text {
+        if let required = correction.requiredWeeklyChangeKg {
+            Text("少し速めのペースです（1 週間に \(abs(required), format: .number.precision(.fractionLength(1))) kg）。無理のない目安は \(abs(correction.maxWeeklyChangeKg), format: .number.precision(.fractionLength(1))) kg までです。")
+        } else {
+            Text("少し速めのペースです。")
         }
     }
 
@@ -90,11 +168,34 @@ extension ProfileInputValidator.DeadlineError {
     }
 }
 
-#Preview {
+#Preview("無理のないペース") {
     @Previewable @State var draft = GoalDraft()
     NavigationStack {
         Form {
             GoalFormSections(draft: $draft, currentWeightKg: 64.5, targetWeightErrorMessage: nil, deadlineErrorMessage: nil)
         }
     }
+    .onAppear { draft.targetWeightText = "62.0" }
+}
+
+#Preview("速すぎる・大きい文字・ダークモード") {
+    @Previewable @State var draft = GoalDraft()
+    NavigationStack {
+        Form {
+            GoalFormSections(draft: $draft, currentWeightKg: 64.5, targetWeightErrorMessage: nil, deadlineErrorMessage: nil)
+        }
+    }
+    .onAppear { draft.targetWeightText = "50.0" }
+    .dynamicTypeSize(.accessibility2)
+    .preferredColorScheme(.dark)
+}
+
+#Preview("記録なし") {
+    @Previewable @State var draft = GoalDraft()
+    NavigationStack {
+        Form {
+            GoalFormSections(draft: $draft, currentWeightKg: nil, targetWeightErrorMessage: nil, deadlineErrorMessage: nil)
+        }
+    }
+    .onAppear { draft.targetWeightText = "60.0" }
 }

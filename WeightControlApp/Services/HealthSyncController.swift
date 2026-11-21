@@ -75,6 +75,14 @@ final class HealthSyncController {
         }
     }
 
+    /// ヘルスケアに登録されている身長・生まれた年・性別を、初回設定の入力欄に入れてよい形にして返します。
+    /// 連携がオフ・使えない端末なら空を返します。
+    func profilePrefill() async -> HealthProfilePrefill {
+        guard isEnabled, isAvailable else { return HealthProfilePrefill() }
+        let hints = await service.fetchProfileHints(calendar: calendar)
+        return HealthProfilePrefiller.prefill(from: hints, today: .now, calendar: calendar)
+    }
+
     /// 連携をオフにします。取り込み済みの記録はそのまま残します。
     func disable() {
         isEnabled = false
