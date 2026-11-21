@@ -53,6 +53,12 @@ extension UserProfile {
 }
 
 extension WeightGoal {
+    /// 期限の決め方。保存されている文字列から変換して返します（読めない値なら `.manual`）。
+    var paceMode: GoalPaceMode {
+        get { GoalPaceMode(rawValue: paceModeRawValue) ?? .manual }
+        set { paceModeRawValue = newValue.rawValue }
+    }
+
     /// ホーム画面の計算用の値
     var dashboardGoal: DashboardGoal {
         DashboardGoal(targetWeightKg: targetWeightKg, deadline: deadline, startWeightKg: startWeightKg, startDate: startDate)

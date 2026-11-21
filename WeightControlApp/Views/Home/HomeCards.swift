@@ -325,6 +325,8 @@ struct GoalCorrectionCard: View {
 
             Button {
                 goal.deadline = correction.suggestedDeadline
+                // ゆるやか／ハードの提案ではなく、ここで選んだ日付になるので「自分で決める」にする
+                goal.paceMode = .manual
             } label: {
                 Label("期限を \(correction.suggestedDeadline, format: .dateTime.year().month().day()) にのばす", systemImage: "calendar")
                     .frame(maxWidth: .infinity, alignment: .leading)

@@ -3,14 +3,17 @@ import SwiftData
 
 /// 設定画面（とホームの修正案）から開く、目標の編集画面。目標がまだなければ新しく作ります。
 ///
-/// 入力中の目標が無理のないペースかを、その場で `GoalFormSections` がお知らせします。
-/// ペースの判定には、ホームと同じ「いまの体重の目安」（直近 3 週間の直線の今日の値）を使います。
+/// 期限の提案（ゆるやか／ハード）や、自分で決めた期限が無理のないペースかを、その場で `GoalFormSections` がお知らせします。
+/// 計算には、ホームと同じ「いまの体重の目安」（直近 3 週間の直線の今日の値）と、ホームと同じ消費カロリーの目安を使います。
+/// 開いたときは保存した期限をそのまま出し、目標体重かペースを変えたときだけ今日から計算し直します。
 struct EditGoalView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
     @Query(sort: \WeightEntry.date, order: .reverse) private var entries: [WeightEntry]
     /// 身長を BMI の目安に使うため
     @Query private var profiles: [UserProfile]
+    /// 消費カロリーの目安にヘルスケアの運動量を使うため（プレビューなどで渡されていないときは nil）
+    @Environment(HealthSyncController.self) private var health: HealthSyncController?
 
     /// 編集する目標。nil のときは新しく作る。
     let goal: WeightGoal?
@@ -37,7 +40,8 @@ struct EditGoalView: View {
                 currentWeightKg: paceReferenceWeightKg,
                 targetWeightErrorMessage: targetWeightErrorMessage,
                 deadlineErrorMessage: deadlineErrorMessage,
-                heightCm: profiles.first?.heightCm
+                heightCm: profiles.first?.heightCm,
+                energy: deadlineEnergy
             )
 
             if goal != nil {
@@ -65,6 +69,18 @@ struct EditGoalView: View {
         }
         .onChange(of: draft.targetWeightText) { targetWeightErrorMessage = nil }
         .onChange(of: draft.deadline) { deadlineErrorMessage = nil }
+        .onChange(of: draft.mode) { deadlineErrorMessage = nil }
+    }
+
+    /// 期限の提案に使うカロリーの目安（ホームと同じ計算）。プロフィールか体重がなければ nil。
+    private var deadlineEnergy: DeadlineEnergy? {
+        guard let profile = profiles.first, let weightKg = paceReferenceWeightKg else { return nil }
+        return GoalDeadlineProposer.energy(
+            profile: profile.dashboardProfile,
+            weightKg: weightKg,
+            healthActivity: health?.activitySummary,
+            now: .now
+        )
     }
 
     /// ペースの判定に使う体重：ホームと同じ「いまの体重の目安」。記録が少なくて出せなければ最新の記録。
@@ -75,12 +91,18 @@ struct EditGoalView: View {
 
     private func save() {
         let targetResult = WeightInputParser.parse(draft.targetWeightText)
-        let deadlineResult = ProfileInputValidator.validateDeadline(draft.deadline, today: .now)
+        // ゆるやか／ハードなら提案の期限、自分で決めるなら選んだ日付
+        let resolvedDeadline = draft.resolvedDeadline(currentWeightKg: paceReferenceWeightKg, energy: deadlineEnergy)
+        let deadlineResult = resolvedDeadline.map { ProfileInputValidator.validateDeadline($0, today: .now) }
 
         guard case .success(let targetWeightKg) = targetResult,
-              case .success(let deadline) = deadlineResult else {
+              case .success(let deadline)? = deadlineResult else {
             if case .failure(let error) = targetResult { targetWeightErrorMessage = error.goalMessage }
-            if case .failure(let error) = deadlineResult { deadlineErrorMessage = error.message }
+            if case .failure(let error)? = deadlineResult { deadlineErrorMessage = error.message }
+            // 目標体重は入っているのに、提案を出せなかったとき（体重の記録がない・もう届いているなど）
+            if deadlineResult == nil, (try? targetResult.get()) != nil {
+                deadlineErrorMessage = ProfileInputValidator.DeadlineError.proposalUnavailableMessage
+            }
             return
         }
 
@@ -92,11 +114,13 @@ struct EditGoalView: View {
             }
             goal.targetWeightKg = targetWeightKg
             goal.deadline = deadline
+            goal.paceMode = draft.mode
         } else {
             modelContext.insert(WeightGoal(
                 targetWeightKg: targetWeightKg,
                 deadline: deadline,
-                startWeightKg: currentWeightKg
+                startWeightKg: currentWeightKg,
+                paceModeRawValue: draft.mode.rawValue
             ))
         }
         dismiss()

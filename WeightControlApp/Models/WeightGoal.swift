@@ -15,11 +15,22 @@ final class WeightGoal {
     var startDate: Date
     /// 目標を決めたときの体重（kg）。記録がまだなければ nil。進み具合の表示に使います。
     var startWeightKg: Double?
+    /// 期限の決め方（Logic の `GoalPaceMode` の rawValue：ゆるやか・ハード・自分で決める）。
+    /// 後から追加した列です。既定値（"manual"＝自分で決める）があるので、以前に保存した目標は
+    /// 「自分で決めた期限」として読み込まれ、期限は変わりません。
+    var paceModeRawValue: String = "manual"
 
-    init(targetWeightKg: Double, deadline: Date, startDate: Date = .now, startWeightKg: Double? = nil) {
+    init(
+        targetWeightKg: Double,
+        deadline: Date,
+        startDate: Date = .now,
+        startWeightKg: Double? = nil,
+        paceModeRawValue: String = "manual"
+    ) {
         self.targetWeightKg = targetWeightKg
         self.deadline = deadline
         self.startDate = startDate
         self.startWeightKg = startWeightKg
+        self.paceModeRawValue = paceModeRawValue
     }
 }
