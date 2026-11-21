@@ -1,24 +1,5 @@
 import Foundation
 
-/// 体の大きさに関する計算。
-nonisolated enum BodyMetrics {
-    /// BMI の「ふつう」の下限の目安（日本肥満学会などで使われる値）
-    static let lowerNormalBMI = 18.5
-
-    /// BMI ＝ 体重kg ÷ (身長m × 身長m)
-    static func bmi(weightKg: Double, heightCm: Double) -> Double {
-        let heightM = heightCm / 100
-        guard heightM > 0 else { return 0 }
-        return weightKg / (heightM * heightM)
-    }
-
-    /// 目標体重の BMI が 18.5 を下回るかどうか。
-    /// 画面では責めずに「目標を見直してみませんか」とやさしく伝える想定です。
-    static func isBelowLowerNormalBMI(weightKg: Double, heightCm: Double) -> Bool {
-        bmi(weightKg: weightKg, heightCm: heightCm) < lowerNormalBMI
-    }
-}
-
 /// 無理のある目標だったときの、修正案。
 nonisolated struct GoalCorrection: Equatable, Sendable {
     /// 期限に間に合わせるのに必要なペース（kg/週）。期限が過ぎていれば `nil`。

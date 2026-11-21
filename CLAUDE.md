@@ -26,7 +26,7 @@
 | `WeightControlApp/App/` | `@main` のアプリ本体、ModelContainer の設定 | 小さく保つ |
 | `WeightControlApp/Models/` | `@Model` のデータ型 | 保存する「形」だけ。計算は Logic へ |
 | `WeightControlApp/Views/` | SwiftUI の画面・部品（共通の見た目の部品は `Views/Components/`） | 計算ロジックを直接書かない |
-| `WeightControlApp/Logic/` | 予測（実測体重への線形回帰。EMA はほめるメッセージ用）、カロリー計算（Mifflin-St Jeor）、メッセージ生成など。`Food/`・`Messages/`・`Calendar/`・`Health/`・`Reminders/`・`Demo/` のサブフォルダあり | **SwiftUI / SwiftData に依存しない純粋な関数・struct**（`nonisolated` を付ける）。必ずテストを書く |
+| `WeightControlApp/Logic/` | 予測（実測体重への線形回帰。EMA はほめるメッセージ用）、カロリー計算（Mifflin-St Jeor）、メッセージ生成など。`Food/`・`Messages/`・`Calendar/`・`Health/`・`Reminders/`・`History/`・`Pro/`・`Demo/` のサブフォルダあり | **SwiftUI / SwiftData に依存しない純粋な関数・struct**（`nonisolated` を付ける）。必ずテストを書く |
 | `WeightControlApp/Services/` | HealthKit・通知（UserNotifications）など、外の仕組みとやり取りする窓口と、その結果を SwiftData に反映する係 | 外の型（`HKQuantitySample` など）はここで値の型に変換し、判断のルールは `Logic/` に置いてテストする |
 | `WeightControlApp/Resources/` | アプリに同梱するデータ（`FoodCalories.json`） | 数値の修正はコードではなく JSON で |
 | `WeightControlAppTests/` | Swift Testing の単体テスト | `Logic/` のテストが中心 |
@@ -54,7 +54,8 @@ Apple の「ワークアウト」アプリのような、**シンプルで、運
 ## 現在の状態
 
 - 進み具合は `docs/ROADMAP.md` が正。作業を始める前に読み、PR でフェーズが進んだら更新する。
-- フェーズ 1〜7 は画面まで完成（フェーズ 3〜5 はホームタブ。`HomeDashboardBuilder` が既存ロジックをまとめる）。フェーズ 8 は記録のリマインド通知まで。
+- フェーズ 1〜8 は画面まで完成（フェーズ 3〜5 はホームタブ。`HomeDashboardBuilder` が既存ロジックをまとめる。フェーズ 8 は記録のリマインドとほめる通知）。フェーズ 12 は計算だけ（`Logic/Pro/`、画面なし）。フェーズ 15 の画面の作り直しは、ホーム・履歴と入力・設定と初回設定まで。
+- 目標は体重で決める。BMI は目標体重の目安として横に出すだけで、判定は `GoalBMIAdvisor`（18.5 未満は注意・保存は可、25 以上で減らす目標は「最初の一歩」としてほめる、25 以上へ増やす目標は注意）。考え方と文言は `docs/BMI_GOAL.md`。BMI の区分の名前（「低体重」「肥満」）は画面に出さず、「低め・ふつう・高め」と言う。
 - 予測・安全チェック・カロリーの「今の体重」は、直近 21 日の測った体重に引いた直線の今日の値（`GoalForecaster.paceEstimate`）。グラフにもこの直線（実線）と予測（点線）を描く。予測は記録 3 日から出し、7 日未満は「精度は低め」の注意を出す。EMA（`WeightTrendCalculator`）はほめるメッセージだけに使い、画面に「トレンド」という言葉や数字は出さない。
 - 消費カロリーは `EnergyExpenditureResolver` が「自動（ヘルスケアの実績 7 日分以上なら実績、なければ活動係数）・活動量・ヘルスケアの実績」から決める。
 - 予測やカロリーの計算を変えたら、`DemoScenarioTests` と `docs/DEMO_DATA.md`（デモデータの期待値）も同じ PR で更新する。

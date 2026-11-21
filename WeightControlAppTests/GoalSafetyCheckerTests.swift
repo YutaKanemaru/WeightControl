@@ -2,7 +2,8 @@ import Foundation
 import Testing
 @testable import WeightControlApp
 
-/// 目標の安全チェックと修正提案（GoalSafetyChecker）、BMI（BodyMetrics）のテスト
+/// 目標の安全チェックと修正提案（GoalSafetyChecker）、BMI（BodyMetrics）のテスト。
+/// BMI の範囲や目標の判定のテストは GoalBMIAdvisorTests にあります。
 struct GoalSafetyCheckerTests {
     private let calendar = TestCalendar.utc
     private func day(_ n: Int) -> Date { TestCalendar.day(n) }
