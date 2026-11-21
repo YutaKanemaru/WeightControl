@@ -48,7 +48,8 @@ struct HomeView: View {
                             latestKg: latest.weightKg,
                             latestDate: latest.date,
                             remainingKg: remainingKg(dashboard: dashboard, goal: goal),
-                            goalWeightKg: goal?.targetWeightKg
+                            goalWeightKg: goal?.targetWeightKg,
+                            maintenanceRange: dashboard.maintenance?.range
                         )
 
                         PraiseCard(message: dashboard.praise, streakDays: dashboard.streakDays)
@@ -58,7 +59,16 @@ struct HomeView: View {
                         EmptyRecordsCard { isShowingAddSheet = true }
                     }
 
-                    if let goal {
+                    if let goal, let maintenance = dashboard.maintenance {
+                        // リバウンド抑制モード中：達成の見込み・修正案・見込みの幅の代わりに、範囲のカード
+                        MaintenanceStatusCard(result: maintenance, goal: goal, currentWeightKg: entries.first?.weightKg)
+                        if let goalBMI = dashboard.goalBMI, goalBMI.needsHomeAttention {
+                            GoalBMICard(advice: goalBMI, goal: goal, currentWeightKg: entries.first?.weightKg)
+                        }
+                    } else if let goal {
+                        if dashboard.isGoalAchieved {
+                            GoalAchievedCard(goal: goal, isProUnlocked: isProUnlocked)
+                        }
                         if !entries.isEmpty, let forecast = dashboard.forecast {
                             ForecastCard(forecast: forecast)
                         }
@@ -76,9 +86,10 @@ struct HomeView: View {
                     }
 
                     if let intake = dashboard.intake {
-                        IntakeCard(intake: intake, energyChoice: dashboard.energyChoice, isCheatDay: dashboard.isCheatDayToday)
+                        IntakeCard(intake: intake, energyChoice: dashboard.energyChoice, isCheatDay: dashboard.isCheatDayToday,
+                                   maintenanceStatus: dashboard.maintenance?.status)
                         let suggestion = dashboard.cheatDaySuggestion?.suggestion
-                        if isProUnlocked, CheatDayCard.isVisible(suggestion: suggestion, cheatDays: cheatDays) {
+                        if isProUnlocked, dashboard.maintenance == nil, CheatDayCard.isVisible(suggestion: suggestion, cheatDays: cheatDays) {
                             CheatDayCard(suggestion: suggestion, cheatDays: cheatDays, maintenanceKcal: intake.tdeeKcal)
                         }
                     }
@@ -194,6 +205,20 @@ private func homePreviewContainer(
 #Preview("目標が速すぎる") {
     HomeView()
         .modelContainer(homePreviewContainer(goalKg: 55, deadlineMonths: 1))
+}
+
+#Preview("リバウンド抑制モード（Pro）") {
+    let container = homePreviewContainer(goalKg: 64)
+    let goal = try! container.mainContext.fetch(FetchDescriptor<WeightGoal>()).first!
+    goal.maintenanceStartDate = Calendar.current.date(byAdding: .day, value: -14, to: .now)
+    return HomeView()
+        .modelContainer(container)
+        .environment(ProAccess.previewUnlocked())
+}
+
+#Preview("目標達成（無料版の Pro 案内）") {
+    HomeView()
+        .modelContainer(homePreviewContainer(goalKg: 64))
 }
 
 #Preview("目標なし") {

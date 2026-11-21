@@ -13,6 +13,8 @@ struct SettingsView: View {
     @Query(sort: \WeightEntry.date, order: .reverse) private var entries: [WeightEntry]
     /// ヘルスケア連携の係（連携のオン・オフを行の右に出すため。プレビューでは nil のことがある）
     @Environment(HealthSyncController.self) private var health: HealthSyncController?
+    /// Pro を使えるか（リバウンド抑制モードの欄を出すため）
+    @Environment(ProAccess.self) private var pro: ProAccess?
 
     var body: some View {
         NavigationStack {
@@ -39,13 +41,26 @@ struct SettingsView: View {
     @ViewBuilder
     private var goalSection: some View {
         Section {
-            if let goal = goals.first {
+            if let goal = goals.first, isProUnlocked, goal.isInMaintenance {
+                MaintenanceSettingsRows(goal: goal, currentWeightKg: entries.first?.weightKg, heightCm: profiles.first?.heightCm)
+            } else if let goal = goals.first {
                 NavigationLink {
                     EditGoalView(goal: goal, currentWeightKg: entries.first?.weightKg)
                 } label: {
                     goalSummary(goal)
                 }
                 .accessibilityHint(Text("目標を変更します"))
+                if isProUnlocked {
+                    Button {
+                        let points = entries.map { WeightPoint(date: $0.date, weightKg: $0.weightKg) }
+                        let center = HomeDashboardBuilder.currentWeightEstimate(points: points)
+                            .map(MaintenanceAdvisor.roundedCenterKg)
+                        goal.startMaintenance(centerKg: center)
+                    } label: {
+                        Label("今の体重でリバウンド抑制モードを始める", systemImage: "shield.lefthalf.filled")
+                    }
+                    .disabled(entries.isEmpty)
+                }
             } else {
                 VStack(alignment: .leading, spacing: 6) {
                     Label("目標はまだ決めていません", systemImage: "flag")
@@ -65,8 +80,14 @@ struct SettingsView: View {
             }
         } header: {
             Text("目標")
+        } footer: {
+            if isProUnlocked, let goal = goals.first, !goal.isInMaintenance {
+                Text("リバウンド抑制モード（Pro）は、今の体重を中心に ±\(MaintenanceAdvisor.defaultHalfWidthKg, format: .number.precision(.fractionLength(1))) kg の範囲でキープするモードです。目標に届くと、ホームからも始められます。")
+            }
         }
     }
+
+    private var isProUnlocked: Bool { pro?.isUnlocked ?? false }
 
     /// 目標体重と、期限までの日数を大きく並べる
     private func goalSummary(_ goal: WeightGoal) -> some View {

@@ -61,6 +61,39 @@ extension WeightGoal {
 
     /// ホーム画面の計算用の値
     var dashboardGoal: DashboardGoal {
-        DashboardGoal(targetWeightKg: targetWeightKg, deadline: deadline, startWeightKg: startWeightKg, startDate: startDate)
+        DashboardGoal(
+            targetWeightKg: targetWeightKg,
+            deadline: deadline,
+            startWeightKg: startWeightKg,
+            startDate: startDate,
+            maintenanceStartDate: maintenanceStartDate,
+            maintenanceHalfWidthKg: maintenanceHalfWidthKg
+        )
+    }
+
+    /// リバウンド抑制モード中か
+    var isInMaintenance: Bool { maintenanceStartDate != nil }
+
+    /// 計算用の値。Pro を使えないときは、リバウンド抑制モードの情報を外します
+    /// （ほめる通知など、Pro かどうかを知らない計算に渡すとき用。ホームの計算は `includesPro` で自分で判断します）。
+    func dashboardGoal(includesMaintenance: Bool) -> DashboardGoal {
+        var value = dashboardGoal
+        if !includesMaintenance { value.maintenanceStartDate = nil }
+        return value
+    }
+
+    /// リバウンド抑制モードを始めます。`centerKg` を渡すと、範囲の中心（目標体重）をその値にします。
+    func startMaintenance(centerKg: Double? = nil, now: Date = .now) {
+        if let centerKg, centerKg != targetWeightKg {
+            targetWeightKg = centerKg
+            startDate = now
+            startWeightKg = centerKg
+        }
+        maintenanceStartDate = now
+    }
+
+    /// リバウンド抑制モードを終えます（新しい目標を決めたとき）。
+    func endMaintenance() {
+        maintenanceStartDate = nil
     }
 }

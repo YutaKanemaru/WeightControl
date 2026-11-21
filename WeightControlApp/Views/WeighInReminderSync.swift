@@ -10,6 +10,10 @@ struct WeighInReminderSync: ViewModifier {
     @Query private var entries: [WeightEntry]
     /// 目標は 1 件だけの想定。念のため新しい順に並べて先頭を使う（ほめる通知の「目標の節目」に使う）
     @Query(sort: \WeightGoal.startDate, order: .reverse) private var goals: [WeightGoal]
+    /// 身長（リバウンド抑制モードの範囲をホームと同じにするため）
+    @Query private var profiles: [UserProfile]
+    /// Pro を使えるか（使えないときは、リバウンド抑制モードのお知らせを出さない）
+    @Environment(ProAccess.self) private var pro: ProAccess?
     /// アプリが前面にあるか、裏に回ったか（scenePhase）。前面に戻るたびに日付が変わっている可能性があるので作り直す
     @Environment(\.scenePhase) private var scenePhase
 
@@ -27,6 +31,7 @@ struct WeighInReminderSync: ViewModifier {
         var minute: Int
         var isPraiseEnabled: Bool
         var isActive: Bool
+        var heightCm: Double?
     }
 
     /// 記録を計算用の値（`WeightPoint`）に詰め替えたもの
@@ -34,16 +39,22 @@ struct WeighInReminderSync: ViewModifier {
         entries.map { WeightPoint(date: $0.date, weightKg: $0.weightKg) }
     }
 
+    /// ほめる通知に渡す目標。Pro を使えないときは、リバウンド抑制モードの情報を外す
+    private var praiseGoal: DashboardGoal? {
+        goals.first?.dashboardGoal(includesMaintenance: pro?.isUnlocked ?? false)
+    }
+
     func body(content: Content) -> some View {
         content
             // .task(id:) は、画面が表示されたときと、id の値が変わったときに中身を実行します
             .task(id: Trigger(points: points,
-                              goal: goals.first?.dashboardGoal,
+                              goal: praiseGoal,
                               isEnabled: isEnabled,
                               hour: hour,
                               minute: minute,
                               isPraiseEnabled: isPraiseEnabled,
-                              isActive: scenePhase == .active)) {
+                              isActive: scenePhase == .active,
+                              heightCm: profiles.first?.heightCm)) {
                 let points = points
                 WeighInReminderScheduler.shared.update(
                     isEnabled: isEnabled,
@@ -53,7 +64,8 @@ struct WeighInReminderSync: ViewModifier {
                 PraiseNotificationScheduler.shared.update(
                     isEnabled: isPraiseEnabled,
                     points: points,
-                    goal: goals.first?.dashboardGoal
+                    goal: praiseGoal,
+                    heightCm: profiles.first?.heightCm
                 )
             }
     }
