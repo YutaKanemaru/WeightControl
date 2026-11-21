@@ -8,7 +8,7 @@ import SwiftData
 /// 2. ヘルスケア：連携するかを選ぶ。連携すると、ヘルスケアの身長・生まれた年・性別を次のページに入れておき、
 ///    体重の記録も取り込む（ヘルスケアを使えない端末や、もう連携している場合はこのページを飛ばす）
 /// 3. あなたについて：身長・生まれた年・性別・活動量と、いまの体重（任意）
-/// 4. 目標：目標体重と期限（あとから決めてもよい）
+/// 4. 目標：目標体重とペース（ゆるやか／ハード／自分で決める）。期限はアプリが提案する（あとから決めてもよい）
 ///
 /// `NavigationStack(path:)` は「いま何ページ目まで進んでいるか」を配列で管理する仕組みで、
 /// 配列に要素を足すと次のページへ進み、戻るボタンで要素が減ります。
@@ -305,7 +305,8 @@ struct OnboardingView: View {
                 currentWeightKg: referenceWeightKg,
                 targetWeightErrorMessage: targetWeightErrorMessage,
                 deadlineErrorMessage: deadlineErrorMessage,
-                heightCm: try? ProfileInputValidator.parseHeightCm(profileDraft.heightText).get()
+                heightCm: try? ProfileInputValidator.parseHeightCm(profileDraft.heightText).get(),
+                energy: deadlineEnergy
             )
 
             Section {
@@ -327,6 +328,7 @@ struct OnboardingView: View {
         }
         .onChange(of: goalDraft.targetWeightText) { targetWeightErrorMessage = nil }
         .onChange(of: goalDraft.deadline) { deadlineErrorMessage = nil }
+        .onChange(of: goalDraft.mode) { deadlineErrorMessage = nil }
     }
 
     // MARK: - 部品
@@ -366,6 +368,24 @@ struct OnboardingView: View {
         return entries.first?.weightKg
     }
 
+    /// 期限の提案に使うカロリーの目安（ここまでに入れたプロフィールと体重から、ホームと同じ式で計算）
+    private var deadlineEnergy: DeadlineEnergy? {
+        guard let heightCm = try? ProfileInputValidator.parseHeightCm(profileDraft.heightText).get(),
+              let weightKg = referenceWeightKg else { return nil }
+        let profile = DashboardProfile(
+            heightCm: heightCm,
+            birthYear: profileDraft.birthYear,
+            sex: profileDraft.sex.biologicalSex,
+            activityLevel: profileDraft.activityLevel.calculatorLevel
+        )
+        return GoalDeadlineProposer.energy(
+            profile: profile,
+            weightKg: weightKg,
+            healthActivity: health?.activitySummary,
+            now: .now
+        )
+    }
+
     /// 身長をチェックし、OK なら cm の値を返す（だめならエラー表示をして nil）
     private func validatedHeightCm() -> Double? {
         switch ProfileInputValidator.parseHeightCm(profileDraft.heightText) {
@@ -402,18 +422,25 @@ struct OnboardingView: View {
         var goal: WeightGoal?
         if includingGoal {
             let targetResult = WeightInputParser.parse(goalDraft.targetWeightText)
-            let deadlineResult = ProfileInputValidator.validateDeadline(goalDraft.deadline, today: .now)
+            // ゆるやか／ハードなら提案の期限、自分で決めるなら選んだ日付
+            let resolvedDeadline = goalDraft.resolvedDeadline(currentWeightKg: referenceWeightKg, energy: deadlineEnergy)
+            let deadlineResult = resolvedDeadline.map { ProfileInputValidator.validateDeadline($0, today: .now) }
 
             switch (targetResult, deadlineResult) {
-            case (.success(let targetWeightKg), .success(let deadline)):
+            case (.success(let targetWeightKg), .success(let deadline)?):
                 goal = WeightGoal(
                     targetWeightKg: targetWeightKg,
                     deadline: deadline,
-                    startWeightKg: currentWeight ?? entries.first?.weightKg
+                    startWeightKg: currentWeight ?? entries.first?.weightKg,
+                    paceModeRawValue: goalDraft.mode.rawValue
                 )
             default:
                 if case .failure(let error) = targetResult { targetWeightErrorMessage = error.goalMessage }
-                if case .failure(let error) = deadlineResult { deadlineErrorMessage = error.message }
+                if case .failure(let error)? = deadlineResult { deadlineErrorMessage = error.message }
+                // 目標体重は入っているのに、提案を出せなかったとき（いまの体重が未入力・もう届いているなど）
+                if deadlineResult == nil, (try? targetResult.get()) != nil {
+                    deadlineErrorMessage = ProfileInputValidator.DeadlineError.proposalUnavailableMessage
+                }
                 return
             }
         }
