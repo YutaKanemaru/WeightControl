@@ -7,7 +7,7 @@ import SwiftData
 extension ModelContainer {
     static func preview(includesProfile: Bool = true, includesGoal: Bool = true) -> ModelContainer {
         let container = try! ModelContainer(
-            for: WeightEntry.self, UserProfile.self, WeightGoal.self, ExerciseDay.self,
+            for: WeightEntry.self, UserProfile.self, WeightGoal.self, ExerciseDay.self, CheatDay.self,
             configurations: ModelConfiguration(isStoredInMemoryOnly: true)
         )
         let context = container.mainContext

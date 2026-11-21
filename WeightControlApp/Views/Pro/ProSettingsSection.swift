@@ -1,7 +1,7 @@
 import SwiftUI
 import SwiftData
 
-/// 設定タブの「Pro」セクション：Pro の状態、Pro の画面への入口、開発用の「Pro を試す」スイッチ。
+/// 設定タブの「Pro」セクション：Pro の状態と、開発用の「Pro を試す」スイッチ。
 ///
 /// 「Pro を試す」は `#if DEBUG` で囲んでいるので、Xcode から実行したとき（Debug ビルド）だけ表示されます。
 /// App Store に出す Release ビルドにはコードごと入らず、`ProAccess` 側でもスイッチの値を無視します（二重の守り）。
@@ -14,12 +14,6 @@ struct ProSettingsSection: View {
                 statusText
             } label: {
                 Label("Pro", systemImage: "star.circle")
-            }
-
-            NavigationLink {
-                CheatDayPlannerView()
-            } label: {
-                Label("ごほうびの日の計画", systemImage: "gift")
             }
 
             #if DEBUG
@@ -36,7 +30,7 @@ struct ProSettingsSection: View {
             Text("Pro")
         } footer: {
             VStack(alignment: .leading, spacing: 4) {
-                Text("ホームのグラフの「見込みの幅」と、ごほうびの日の計画が使えます。購入のしくみは準備中です。")
+                Text("ホームのグラフの「見込みの幅」と、チートデーの提案が使えます。チートデーは、予定より先に進んでいるときにホームでアプリが提案します。購入のしくみは準備中です。")
                 #if DEBUG
                 Text("「Pro を試す」は Debug ビルドだけに表示され、Release ビルドでは効きません。")
                 #endif

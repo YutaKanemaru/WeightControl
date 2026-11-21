@@ -14,10 +14,12 @@ struct HomeView: View {
     @Query private var profiles: [UserProfile]
     /// 目標は 1 件だけの想定。念のため新しい順に並べて先頭を使う。
     @Query(sort: \WeightGoal.startDate, order: .reverse) private var goals: [WeightGoal]
+    /// 決めたチートデー（Pro）。提案の「週 2 日まで」と、今日がチートデーかの判断に使う。
+    @Query(sort: \CheatDay.date) private var cheatDays: [CheatDay]
 
     /// ヘルスケア連携の係。連携していて運動データがあれば、消費カロリーの計算に実績を使う。
     @Environment(HealthSyncController.self) private var health: HealthSyncController?
-    /// Pro を使えるか（使えるときだけ、見込みの幅とごほうびの日のカードを出す）
+    /// Pro を使えるか（使えるときだけ、見込みの幅とチートデーのカードを出す）
     @Environment(ProAccess.self) private var pro: ProAccess?
 
     @State private var isShowingAddSheet = false
@@ -34,6 +36,7 @@ struct HomeView: View {
             foods: Self.foods,
             healthActivity: health?.activitySummary,
             includesPro: isProUnlocked,
+            cheatDays: cheatDays.map(\.date),
             now: .now
         )
 
@@ -73,9 +76,10 @@ struct HomeView: View {
                     }
 
                     if let intake = dashboard.intake {
-                        IntakeCard(intake: intake, energyChoice: dashboard.energyChoice)
-                        if isProUnlocked {
-                            CheatDayLinkCard()
+                        IntakeCard(intake: intake, energyChoice: dashboard.energyChoice, isCheatDay: dashboard.isCheatDayToday)
+                        let suggestion = dashboard.cheatDaySuggestion?.suggestion
+                        if isProUnlocked, CheatDayCard.isVisible(suggestion: suggestion, cheatDays: cheatDays) {
+                            CheatDayCard(suggestion: suggestion, cheatDays: cheatDays, maintenanceKcal: intake.tdeeKcal)
                         }
                     }
 
@@ -129,7 +133,7 @@ private func homePreviewContainer(
     isFlat: Bool = false
 ) -> ModelContainer {
     let container = try! ModelContainer(
-        for: WeightEntry.self, UserProfile.self, WeightGoal.self, ExerciseDay.self,
+        for: WeightEntry.self, UserProfile.self, WeightGoal.self, ExerciseDay.self, CheatDay.self,
         configurations: ModelConfiguration(isStoredInMemoryOnly: true)
     )
     let context = container.mainContext
@@ -154,7 +158,7 @@ private func homePreviewContainer(
         .modelContainer(homePreviewContainer())
 }
 
-#Preview("Pro（見込みの幅・ごほうびの日）") {
+#Preview("Pro（見込みの幅・チートデーの提案）") {
     HomeView()
         .modelContainer(homePreviewContainer())
         .environment(ProAccess.previewUnlocked())
@@ -199,11 +203,11 @@ private func homePreviewContainer(
 
 #Preview("記録なし") {
     HomeView()
-        .modelContainer(for: [WeightEntry.self, UserProfile.self, WeightGoal.self, ExerciseDay.self], inMemory: true)
+        .modelContainer(for: [WeightEntry.self, UserProfile.self, WeightGoal.self, ExerciseDay.self, CheatDay.self], inMemory: true)
 }
 
 #Preview("記録なし・ダークモード") {
     HomeView()
-        .modelContainer(for: [WeightEntry.self, UserProfile.self, WeightGoal.self, ExerciseDay.self], inMemory: true)
+        .modelContainer(for: [WeightEntry.self, UserProfile.self, WeightGoal.self, ExerciseDay.self, CheatDay.self], inMemory: true)
         .preferredColorScheme(.dark)
 }

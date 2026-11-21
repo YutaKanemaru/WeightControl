@@ -38,7 +38,7 @@ struct DemoDataSection: View {
         } header: {
             Text("開発用：デモデータ")
         } footer: {
-            Text("今の記録・プロフィール・目標・運動スタンプをすべて消して、デモデータに置きかえます。Debug ビルドだけに表示されます。")
+            Text("今の記録・プロフィール・目標・運動スタンプ・チートデーをすべて消して、デモデータに置きかえます。Debug ビルドだけに表示されます。")
         }
         .confirmationDialog(
             "今のデータを消して、デモデータを読み込みますか？",
@@ -66,6 +66,7 @@ enum DemoDataLoader {
         deleteAll(WeightEntry.self, in: context)
         deleteAll(WeightGoal.self, in: context)
         deleteAll(ExerciseDay.self, in: context)
+        deleteAll(CheatDay.self, in: context)
 
         for point in dataSet.points {
             context.insert(WeightEntry(date: point.date, weightKg: point.weightKg))

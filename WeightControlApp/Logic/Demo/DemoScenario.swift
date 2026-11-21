@@ -151,7 +151,8 @@ nonisolated enum DemoScenario: String, CaseIterable, Identifiable, Sendable {
             goal: DashboardGoal(
                 targetWeightKg: goal.targetWeightKg,
                 deadline: DayMath.date(byAddingDays: goal.deadlineDaysFromToday, to: today, calendar: calendar),
-                startWeightKg: goal.startWeightKg
+                startWeightKg: goal.startWeightKg,
+                startDate: DayMath.date(byAddingDays: firstOffset, to: today, calendar: calendar)
             ),
             goalStartDate: DayMath.date(byAddingDays: firstOffset, to: today, calendar: calendar),
             exerciseDays: exerciseDays

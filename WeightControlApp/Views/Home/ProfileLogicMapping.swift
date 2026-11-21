@@ -55,6 +55,6 @@ extension UserProfile {
 extension WeightGoal {
     /// ホーム画面の計算用の値
     var dashboardGoal: DashboardGoal {
-        DashboardGoal(targetWeightKg: targetWeightKg, deadline: deadline, startWeightKg: startWeightKg)
+        DashboardGoal(targetWeightKg: targetWeightKg, deadline: deadline, startWeightKg: startWeightKg, startDate: startDate)
     }
 }

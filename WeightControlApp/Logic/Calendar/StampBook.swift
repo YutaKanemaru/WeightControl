@@ -1,6 +1,8 @@
 import Foundation
 
-/// カレンダーのスタンプ帳：どの日に「体重を測った」「運動した」スタンプがあるかをまとめたもの。
+/// カレンダーのスタンプ帳：どの日に「体重を測った」「運動した」スタンプと、チートデー（Pro）の印があるかをまとめたもの。
+///
+/// チートデーは「がんばった記録」ではなく予定なので、今月のスタンプの数や連続記録には数えません。
 ///
 /// 記録の日時を「その日の 0 時」にそろえて集合（Set）にしておくので、
 /// 同じ日に何回記録しても 1 つのスタンプとして数えます。
@@ -9,15 +11,19 @@ nonisolated struct StampBook: Sendable {
     let weighInDays: Set<Date>
     /// 運動した日（0 時にそろえたもの）
     let exerciseDays: Set<Date>
+    /// チートデーにした日（0 時にそろえたもの。未来の日もある）
+    let cheatDays: Set<Date>
     private let calendar: Calendar
 
     /// - Parameters:
     ///   - weighInDates: 体重を記録した日時の一覧（順番はバラバラで OK）
     ///   - exerciseDates: 運動した日の一覧
+    ///   - cheatDayDates: チートデーにした日の一覧（Pro。使わないときは空）
     ///   - calendar: 日付の区切り（タイムゾーン）を決めるカレンダー
-    init(weighInDates: [Date], exerciseDates: [Date], calendar: Calendar = .current) {
+    init(weighInDates: [Date], exerciseDates: [Date], cheatDayDates: [Date] = [], calendar: Calendar = .current) {
         self.weighInDays = Set(weighInDates.map { calendar.startOfDay(for: $0) })
         self.exerciseDays = Set(exerciseDates.map { calendar.startOfDay(for: $0) })
+        self.cheatDays = Set(cheatDayDates.map { calendar.startOfDay(for: $0) })
         self.calendar = calendar
     }
 
@@ -29,6 +35,16 @@ nonisolated struct StampBook: Sendable {
     /// その日に運動したか
     func hasExercise(on date: Date) -> Bool {
         exerciseDays.contains(calendar.startOfDay(for: date))
+    }
+
+    /// その日がチートデーか
+    func hasCheatDay(on date: Date) -> Bool {
+        cheatDays.contains(calendar.startOfDay(for: date))
+    }
+
+    /// `date` を含む月のチートデーの日数
+    func cheatDayCount(inMonthContaining date: Date) -> Int {
+        cheatDays.filter { isSameMonth($0, date) }.count
     }
 
     /// `date` を含む月に押されたスタンプの数（体重と運動の合計。同じ日に両方あれば 2 個）

@@ -9,7 +9,7 @@ struct ProLockedView: View {
         ContentUnavailableView {
             Label("Pro の機能です", systemImage: "lock")
         } description: {
-            Text("ごほうびの日の計画と見込みの幅は、Pro で使える機能です。アプリの中で購入できるよう準備しています。")
+            Text("チートデーの提案と見込みの幅は、Pro で使える機能です。アプリの中で購入できるよう準備しています。")
         }
     }
 }
