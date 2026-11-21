@@ -41,6 +41,10 @@ nonisolated struct PraiseMessage: Equatable, Sendable {
         case trendEncouragement
         /// 記録が途切れている。再開をやさしく促す
         case restart
+        /// リバウンド抑制モード：範囲の中でキープできている（`days` は範囲の中が続いている日数）
+        case maintenanceKept(days: Int)
+        /// リバウンド抑制モード：範囲の端に近づいた・外に出た。責めずに、戻し方をそえる
+        case maintenanceDrift
     }
 
     var kind: Kind
@@ -162,6 +166,8 @@ nonisolated enum PraiseMessageGenerator {
         case .goalProgress: 6
         case .trendEncouragement: 7
         case .restart: 8
+        // リバウンド抑制モードのメッセージは MaintenanceAdvisor が作るので、ここでは並べない（念のため最後）
+        case .maintenanceKept, .maintenanceDrift: 9
         }
     }
 }

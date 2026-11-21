@@ -25,20 +25,23 @@ final class PraiseNotificationScheduler {
     /// 設定と記録にあわせて、この先のほめる通知を作り直します。
     ///
     /// アプリを開いたとき、記録を追加・削除したとき、目標や設定を変えたときに呼びます。
-    func update(isEnabled: Bool, points: [WeightPoint], goal: DashboardGoal?) {
+    /// - Parameters:
+    ///   - goal: 目標。Pro を使えないときは、リバウンド抑制モードの情報を外して渡してください。
+    ///   - heightCm: 身長（リバウンド抑制モードの範囲を、ホームと同じにするため）
+    func update(isEnabled: Bool, points: [WeightPoint], goal: DashboardGoal?, heightCm: Double? = nil) {
         let previous = latestTask
         latestTask = Task {
             await previous?.value
-            await apply(isEnabled: isEnabled, points: points, goal: goal)
+            await apply(isEnabled: isEnabled, points: points, goal: goal, heightCm: heightCm)
         }
     }
 
-    private func apply(isEnabled: Bool, points: [WeightPoint], goal: DashboardGoal?) async {
+    private func apply(isEnabled: Bool, points: [WeightPoint], goal: DashboardGoal?, heightCm: Double?) async {
         await removePendingNotifications()
         guard isEnabled, await WeighInReminderScheduler.shared.isAuthorized() else { return }
 
         let calendar = Calendar.current
-        let plans = PraiseNotificationPlanner.plan(points: points, goal: goal, now: .now, calendar: calendar)
+        let plans = PraiseNotificationPlanner.plan(points: points, goal: goal, heightCm: heightCm, now: .now, calendar: calendar)
         for plan in plans {
             let content = UNMutableNotificationContent()
             content.title = plan.title

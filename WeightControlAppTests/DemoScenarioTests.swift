@@ -249,4 +249,51 @@ struct DemoScenarioTests {
         }
         #expect(isApproximately(aheadKg, 0.152727, tolerance: 0.001))
     }
+
+    // MARK: - ⑤ リバウンド抑制モード（Pro）
+
+    @Test("⑤ リバウンド抑制モード：範囲 53.5〜56.5 kg の中だが、10 日ほどで上に出そう（そろそろ端）")
+    func maintenance() throws {
+        let result = try proDashboard(.maintenance)
+        let keep = try #require(result.maintenance)
+        #expect(keep.range == MaintenanceRange(centerKg: 55.0, lowerKg: 53.5, upperKg: 56.5, isLowerRaisedForBMI: false))
+        #expect(isApproximately(keep.currentWeightKg, 56.036797, tolerance: 0.001))
+        #expect(keep.status == .nearEdge(drift: .up, daysUntilExit: 10))
+        // 21 日前に始めてから、ずっと範囲の中（始めた日も含めて 22 日）
+        #expect(keep.daysInRange == 22)
+        #expect(keep.daysAboveRange == 0)
+        #expect(keep.plannedWeeklyChangeKg == 0)
+
+        // 範囲の中なので、摂取カロリーの目安は維持カロリー（消費カロリーの目安そのまま）
+        let intake = try #require(result.intake)
+        #expect(isApproximately(intake.tdeeKcal, 1683.5060, tolerance: 0.01))
+        #expect(isApproximately(intake.targetKcal, 1683.5060, tolerance: 0.01))
+
+        // 上の端に向かっているので食べ物ヒント（カップ麺 1 個分）
+        #expect(isApproximately(try #require(result.overPlanKcalPerDay), 348.7792, tolerance: 0.01))
+        guard case .over(let food, let count, _)? = result.calorieHint else {
+            Issue.record("食べ物ヒントが出るはず: \(String(describing: result.calorieHint))")
+            return
+        }
+        #expect(food.id == "cup_noodle")
+        #expect(count == 1)
+
+        // モード中は、目標に向かうための表示は出さない
+        #expect(result.forecast == nil)
+        #expect(result.forecastLine.isEmpty)
+        #expect(result.safety == nil)
+        #expect(result.forecastRange == nil)
+        #expect(result.cheatDaySuggestion == nil)
+        #expect(!result.isGoalAchieved)
+        #expect(result.praise.kind == .maintenanceDrift)
+    }
+
+    @Test("⑤ 無料版では、モードの情報は使わず、目標達成として Pro の案内を出す")
+    func maintenanceFree() throws {
+        let result = try dashboard(.maintenance)
+        #expect(result.maintenance == nil)
+        // 今の目安 56.04 kg は目標 55.0 kg より上なので、「届いた」にはならない（予測と安全チェックはふだんどおり）
+        #expect(!result.isGoalAchieved)
+        #expect(result.forecast != nil)
+    }
 }

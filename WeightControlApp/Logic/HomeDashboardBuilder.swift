@@ -20,6 +20,10 @@ nonisolated struct DashboardGoal: Equatable, Sendable {
     var startWeightKg: Double?
     /// 目標を決めた日。チートデーの提案（Pro）で「予定の線」を引くのに使います。分からなければ nil（提案しません）。
     var startDate: Date? = nil
+    /// リバウンド抑制モード（Pro）を始めた日。nil ならモードではない（docs/MAINTENANCE_MODE.md）。
+    var maintenanceStartDate: Date? = nil
+    /// リバウンド抑制モードの範囲の幅（中心からの片側、kg）
+    var maintenanceHalfWidthKg: Double = MaintenanceAdvisor.defaultHalfWidthKg
 }
 
 /// ホーム画面に出すものを、まとめて計算した結果。画面はこれを並べるだけにします。
@@ -69,6 +73,12 @@ nonisolated struct HomeDashboard: Equatable, Sendable {
     var cheatDaySuggestion: CheatDaySuggestionResult? = nil
     /// Pro：今日がチートデーか。そのときはホームの摂取カロリーの目安を維持カロリーで出します。
     var isCheatDayToday: Bool = false
+    /// Pro：リバウンド抑制モードの判定。モード中でないとき（Pro を使えないときも）は nil。
+    /// モード中は予測・修正案・見込みの幅・チートデーの提案は出しません（目標に向かって進むための機能なので）。
+    var maintenance: MaintenanceResult? = nil
+    /// 目標に届いた（か通りこした）か。リバウンド抑制モード中は false。
+    /// ホームでは、Pro なら「リバウンド抑制モードを始める」、無料版なら Pro の案内を出すのに使います。
+    var isGoalAchieved: Bool = false
 }
 
 /// ホーム画面のための「とりまとめ役」。
@@ -107,6 +117,20 @@ nonisolated enum HomeDashboardBuilder {
         let paceLine = pace.map { ForecastLineBuilder.fittedLine(for: $0, calendar: calendar) } ?? []
         let streak = WeighInStreakCalculator.currentStreak(dates: points.map(\.date), today: now, calendar: calendar)
 
+        // リバウンド抑制モード（Pro）。モード中は、目標に向かって進むための計算（予測・安全チェック・Pro の予測とチートデー）をしない
+        var maintenance: MaintenanceResult?
+        if includesPro, let goal, let maintenanceStart = goal.maintenanceStartDate {
+            let range = MaintenanceAdvisor.range(
+                centerKg: goal.targetWeightKg,
+                halfWidthKg: goal.maintenanceHalfWidthKg,
+                heightCm: profile?.heightCm
+            )
+            maintenance = MaintenanceAdvisor.evaluate(points: points, range: range, startDate: maintenanceStart, now: now, calendar: calendar)
+        }
+        let isMaintenanceMode = includesPro && goal?.maintenanceStartDate != nil
+        // 予測・安全チェックに使う目標（リバウンド抑制モード中は nil）
+        let progressGoal = isMaintenanceMode ? nil : goal
+
         // 目標の向きと進み具合
         let startKg = goal?.startWeightKg ?? trend.first?.measuredKg
         let direction: GoalDirection = {
@@ -118,7 +142,7 @@ nonisolated enum HomeDashboardBuilder {
             return goalProgress(startKg: startKg, currentKg: currentKg, targetKg: goal.targetWeightKg)
         }()
 
-        let praise = PraiseMessageGenerator.primaryMessage(for: PraiseInput(
+        let praise = maintenance.map(MaintenanceAdvisor.praise(for:)) ?? PraiseMessageGenerator.primaryMessage(for: PraiseInput(
             trendChangeKg: trendChange(trend, overDays: trendChangeWindowDays, calendar: calendar),
             streakDays: streak,
             goalProgress: progress,
@@ -128,7 +152,7 @@ nonisolated enum HomeDashboardBuilder {
         // 予測と点線
         var forecast: GoalForecastResult?
         var forecastLine: [WeightPoint] = []
-        if let goal {
+        if let goal = progressGoal {
             let result = GoalForecaster.forecast(
                 points: points,
                 goalWeightKg: goal.targetWeightKg,
@@ -149,7 +173,7 @@ nonisolated enum HomeDashboardBuilder {
 
         // 目標のペースの安全チェック
         var safety: GoalSafetyResult?
-        if let goal, let currentKg {
+        if let goal = progressGoal, let currentKg {
             safety = GoalSafetyChecker.check(
                 currentWeightKg: currentKg,
                 goalWeightKg: goal.targetWeightKg,
@@ -158,8 +182,9 @@ nonisolated enum HomeDashboardBuilder {
                 calendar: calendar
             )
         }
-        // 目標がなければ「今の体重をキープ」として計算する
-        let plannedWeeklyChangeKg = safety?.plannedWeeklyChangeKg ?? 0
+        // 目標がなければ「今の体重をキープ」として計算する。
+        // リバウンド抑制モード中は、範囲の中なら 0（維持カロリー）、外なら範囲に戻す向きに少しだけ
+        let plannedWeeklyChangeKg = maintenance?.plannedWeeklyChangeKg ?? safety?.plannedWeeklyChangeKg ?? 0
 
         // 1 日の摂取カロリーの目安
         var intake: IntakeRecommendation?
@@ -209,6 +234,29 @@ nonisolated enum HomeDashboardBuilder {
                 hint = result
             }
         }
+        // リバウンド抑制モード中は、上の端に近づいている・上に出たときだけ（同じく 14 日分の記録があるとき）
+        if let maintenance, let pace, pace.recordedDays >= foodHintMinimumRecordedDays, showsFoodHint(for: maintenance.status) {
+            let estimate = EnergyBalanceEstimator.estimate(
+                observedWeeklyChangeKg: pace.weeklyChangeKg,
+                plannedWeeklyChangeKg: plannedWeeklyChangeKg,
+                tdeeKcal: intake?.tdeeKcal
+            )
+            let result = CalorieHintGenerator.hint(forSurplusKcal: estimate.overPlanKcalPerDay, foods: foods)
+            if case .over = result {
+                overPlan = estimate.overPlanKcalPerDay
+                hint = result
+            }
+        }
+
+        // 目標に届いたか（リバウンド抑制モードの案内用）。1 日だけの上下で出さないよう、直線が引けるときだけ
+        var isGoalAchieved = false
+        if let goal = progressGoal, let startKg, let pace {
+            isGoalAchieved = MaintenanceAdvisor.isGoalAchieved(
+                startKg: startKg,
+                currentKg: pace.currentWeightKg,
+                targetKg: goal.targetWeightKg
+            )
+        }
 
         // 目標体重の BMI の目安（いまの体重は、ペースの判定と同じ目安を使う）
         var goalBMI: GoalBMIAdvice?
@@ -223,7 +271,7 @@ nonisolated enum HomeDashboardBuilder {
         // Pro：幅付きの予測と、グラフの帯（まん中の見込みは上の予測と同じ）
         var forecastRange: ForecastRangeResult?
         var forecastBand: [ForecastBandPoint] = []
-        if includesPro, let goal {
+        if includesPro, let goal = progressGoal {
             let range = ForecastRangeEstimator.estimate(
                 points: points,
                 goalWeightKg: goal.targetWeightKg,
@@ -245,7 +293,7 @@ nonisolated enum HomeDashboardBuilder {
         // Pro：チートデーの提案（予測と同じ直線から「予定より何 kg 先に進んでいるか」を見る）
         var cheatDaySuggestion: CheatDaySuggestionResult?
         if includesPro,
-           let goal,
+           let goal = progressGoal,
            let startDate = goal.startDate,
            let intake,
            case .available(let central)? = forecast {
@@ -264,7 +312,7 @@ nonisolated enum HomeDashboardBuilder {
                 calendar: calendar
             )
         }
-        let isCheatDayToday = includesPro && CheatDaySuggestionAdvisor.isCheatDay(now, cheatDays: cheatDays, calendar: calendar)
+        let isCheatDayToday = includesPro && !isMaintenanceMode && CheatDaySuggestionAdvisor.isCheatDay(now, cheatDays: cheatDays, calendar: calendar)
 
         return HomeDashboard(
             trend: trend,
@@ -285,8 +333,18 @@ nonisolated enum HomeDashboardBuilder {
             forecastRange: forecastRange,
             forecastBand: forecastBand,
             cheatDaySuggestion: cheatDaySuggestion,
-            isCheatDayToday: isCheatDayToday
+            isCheatDayToday: isCheatDayToday,
+            maintenance: maintenance,
+            isGoalAchieved: isGoalAchieved
         )
+    }
+
+    /// リバウンド抑制モード中に食べ物のヒントを出す状態か（上の端に近づいている・上に出た）
+    static func showsFoodHint(for status: MaintenanceStatus) -> Bool {
+        switch status {
+        case .nearEdge(.up, _), .above: true
+        case .inRange, .nearEdge(.down, _), .below: false
+        }
     }
 
     /// ここ `days` 日でトレンドがどれだけ動いたか（kg、マイナスは減少）。
