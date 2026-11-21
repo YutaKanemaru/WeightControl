@@ -304,7 +304,8 @@ struct OnboardingView: View {
                 draft: $goalDraft,
                 currentWeightKg: referenceWeightKg,
                 targetWeightErrorMessage: targetWeightErrorMessage,
-                deadlineErrorMessage: deadlineErrorMessage
+                deadlineErrorMessage: deadlineErrorMessage,
+                heightCm: try? ProfileInputValidator.parseHeightCm(profileDraft.heightText).get()
             )
 
             Section {
