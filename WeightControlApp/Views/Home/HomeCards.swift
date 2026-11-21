@@ -121,7 +121,8 @@ struct WeightChartCard: View {
                 paceLine: dashboard.paceLine,
                 forecastLine: dashboard.forecastLine,
                 goalWeightKg: goalWeightKg,
-                deadline: deadline
+                deadline: deadline,
+                forecastBand: dashboard.forecastBand
             )
             notice
         }

@@ -22,9 +22,13 @@ struct HomeDashboardBuilderTests {
         _ points: [WeightPoint],
         profile: DashboardProfile? = nil,
         goal: DashboardGoal? = nil,
+        includesPro: Bool = false,
         now: Date
     ) -> HomeDashboard {
-        HomeDashboardBuilder.build(points: points, profile: profile, goal: goal, foods: foods, now: now, calendar: calendar)
+        HomeDashboardBuilder.build(
+            points: points, profile: profile, goal: goal, foods: foods,
+            includesPro: includesPro, now: now, calendar: calendar
+        )
     }
 
     // MARK: - 記録や設定が足りないとき
@@ -229,5 +233,60 @@ struct HomeDashboardBuilderTests {
         // プロフィールか目標がなければ出さない
         #expect(build(records, goal: lowGoal, now: day(4)).goalBMI == nil)
         #expect(build(records, profile: profile, now: day(4)).goalBMI == nil)
+    }
+
+    // MARK: - 摂取カロリーの下限
+
+    @Test("プロフィールと記録があれば、摂取カロリーの下限も出す（男性は 1500 kcal 以上）")
+    func minimumIntake() throws {
+        let records = points(days: 5) { _ in 70 }
+        let dashboard = build(records, profile: profile, now: day(4))
+        let minimum = try #require(dashboard.minimumIntakeKcal)
+        let intake = try #require(dashboard.intake)
+        #expect(minimum >= 1500)
+        #expect(intake.targetKcal >= minimum)
+        #expect(build(records, now: day(4)).minimumIntakeKcal == nil)
+    }
+
+    // MARK: - Pro
+
+    @Test("Pro を使わないときは、幅付きの予測も帯も出さない")
+    func proIsOffByDefault() {
+        let records = points(days: 21) { 80 - 0.1 * Double($0) }
+        let goal = DashboardGoal(targetWeightKg: 75, deadline: day(90))
+        let dashboard = build(records, profile: profile, goal: goal, now: day(20))
+        #expect(dashboard.forecastRange == nil)
+        #expect(dashboard.forecastBand.isEmpty)
+    }
+
+    @Test("Pro なら幅付きの予測と帯を出す。まん中の日は無料版と同じで、帯は今の体重の目安から始まる")
+    func proForecastRange() throws {
+        let records = points(days: 21) { 80 - 0.1 * Double($0) }
+        let goal = DashboardGoal(targetWeightKg: 75, deadline: day(90))
+        let dashboard = build(records, profile: profile, goal: goal, includesPro: true, now: day(20))
+
+        guard case .available(let range)? = dashboard.forecastRange,
+              case .available(let forecast)? = dashboard.forecast,
+              case .willReach(let date) = forecast.outcome else {
+            Issue.record("幅付きの予測が出ていない: \(String(describing: dashboard.forecastRange))")
+            return
+        }
+        #expect(range.expectedDate == date)
+        let first = try #require(dashboard.forecastBand.first)
+        #expect(first.date == forecast.latestDate)
+        #expect(isApproximately(first.lowerKg, forecast.currentWeightKg, tolerance: 1e-6))
+        #expect(isApproximately(first.upperKg, forecast.currentWeightKg, tolerance: 1e-6))
+        // 無料版の結果は Pro でも変わらない
+        let free = build(records, profile: profile, goal: goal, now: day(20))
+        #expect(free.forecast == dashboard.forecast)
+        #expect(free.forecastLine == dashboard.forecastLine)
+    }
+
+    @Test("Pro でも、目標がなければ幅付きの予測は出さない")
+    func proWithoutGoal() {
+        let records = points(days: 21) { 80 - 0.1 * Double($0) }
+        let dashboard = build(records, profile: profile, includesPro: true, now: day(20))
+        #expect(dashboard.forecastRange == nil)
+        #expect(dashboard.forecastBand.isEmpty)
     }
 }

@@ -16,15 +16,22 @@ struct DashboardCard<Content: View>: View {
     let systemImage: String
     /// 見出しの色。意味のある色（注意＝オレンジなど）だけを渡し、ふだんはアクセントカラー。
     var tint: Color = .accentColor
+    /// 見出しの右に出す小さな札（例: "Pro"）。なければ出さない。
+    var badge: LocalizedStringKey? = nil
     @ViewBuilder let content: Content
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Label(title, systemImage: systemImage)
-                .font(.subheadline.weight(.semibold))
-                .foregroundStyle(tint)
-                // VoiceOver で「見出し」として読み上げ、カードの間を移動しやすくする
-                .accessibilityAddTraits(.isHeader)
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                Label(title, systemImage: systemImage)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(tint)
+                    // VoiceOver で「見出し」として読み上げ、カードの間を移動しやすくする
+                    .accessibilityAddTraits(.isHeader)
+                if let badge {
+                    BadgeLabel(badge)
+                }
+            }
             content
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -38,6 +45,9 @@ struct DashboardCard<Content: View>: View {
         VStack(spacing: 16) {
             DashboardCard(title: "体重", systemImage: "scalemass") {
                 MetricView("最新の体重", value: 64.2, unit: "kg", size: .hero)
+            }
+            DashboardCard(title: "見込みの幅", systemImage: "arrow.left.and.right", badge: "Pro") {
+                Text("札（バッジ）つきの見出しです。")
             }
             DashboardCard(title: "注意の見出し", systemImage: "exclamationmark.triangle", tint: .orange) {
                 Text("意味のある色だけを見出しに使います。")
