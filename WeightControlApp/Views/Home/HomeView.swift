@@ -19,8 +19,10 @@ struct HomeView: View {
 
     /// ヘルスケア連携の係。連携していて運動データがあれば、消費カロリーの計算に実績を使う。
     @Environment(HealthSyncController.self) private var health: HealthSyncController?
-    /// Pro を使えるか（使えるときだけ、見込みの幅とチートデーのカードを出す）
+    /// Pro を使えるか。使えないときは、Pro のカードを「ぼかして」出す（docs/PRO.md）
     @Environment(ProAccess.self) private var pro: ProAccess?
+    /// ホームの「1 か月無料で試せます」のカードを閉じたか
+    @AppStorage(ProPreferenceKey.trialOfferDismissed) private var isTrialOfferDismissed = false
 
     @State private var isShowingAddSheet = false
 
@@ -29,13 +31,17 @@ struct HomeView: View {
 
     var body: some View {
         let goal = goals.first
+        let proStatus = pro?.status() ?? .trialAvailable
+        let isProUnlocked = proStatus.isUnlocked
+        // Pro の計算はいつも行い、使えないときは画面でぼかす（「提案があります」のように、項目があることは見せるため）。
+        // 無料版の結果（予測・カロリーなど）は、これで変わることはありません。
         let dashboard = HomeDashboardBuilder.build(
             points: entries.map { WeightPoint(date: $0.date, weightKg: $0.weightKg) },
             profile: profiles.first?.dashboardProfile,
             goal: goal?.dashboardGoal,
             foods: Self.foods,
             healthActivity: health?.activitySummary,
-            includesPro: isProUnlocked,
+            includesPro: true,
             cheatDays: cheatDays.map(\.date),
             now: .now
         )
@@ -43,6 +49,10 @@ struct HomeView: View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: 16) {
+                    if ProTrialCard.isVisible(status: proStatus, isOfferDismissed: isTrialOfferDismissed) {
+                        ProTrialCard(status: proStatus)
+                    }
+
                     if let latest = entries.first {
                         WeightSummaryCard(
                             latestKg: latest.weightKg,
@@ -53,17 +63,26 @@ struct HomeView: View {
 
                         PraiseCard(message: dashboard.praise, streakDays: dashboard.streakDays)
 
-                        WeightChartCard(dashboard: dashboard, goalWeightKg: goal?.targetWeightKg, deadline: goal?.deadline)
+                        WeightChartCard(
+                            dashboard: dashboard,
+                            goalWeightKg: goal?.targetWeightKg,
+                            deadline: goal?.deadline,
+                            isProUnlocked: isProUnlocked
+                        )
                     } else {
                         EmptyRecordsCard { isShowingAddSheet = true }
                     }
 
                     if let goal {
                         if !entries.isEmpty, let forecast = dashboard.forecast {
-                            ForecastCard(forecast: forecast)
+                            ForecastCard(forecast: forecast, isProUnlocked: isProUnlocked)
                         }
                         if case .available(let range)? = dashboard.forecastRange {
-                            ForecastRangeCard(range: range)
+                            if isProUnlocked {
+                                ForecastRangeCard(range: range)
+                            } else {
+                                LockedForecastRangeCard()
+                            }
                         }
                         if case .tooAggressive(let correction)? = dashboard.safety {
                             GoalCorrectionCard(correction: correction, goal: goal, currentWeightKg: entries.first?.weightKg)
@@ -76,10 +95,19 @@ struct HomeView: View {
                     }
 
                     if let intake = dashboard.intake {
-                        IntakeCard(intake: intake, energyChoice: dashboard.energyChoice, isCheatDay: dashboard.isCheatDayToday)
+                        IntakeCard(
+                            intake: intake,
+                            energyChoice: dashboard.energyChoice,
+                            isCheatDay: isProUnlocked && dashboard.isCheatDayToday
+                        )
                         let suggestion = dashboard.cheatDaySuggestion?.suggestion
-                        if isProUnlocked, CheatDayCard.isVisible(suggestion: suggestion, cheatDays: cheatDays) {
-                            CheatDayCard(suggestion: suggestion, cheatDays: cheatDays, maintenanceKcal: intake.tdeeKcal)
+                        if isProUnlocked {
+                            if CheatDayCard.isVisible(suggestion: suggestion, cheatDays: cheatDays) {
+                                CheatDayCard(suggestion: suggestion, cheatDays: cheatDays, maintenanceKcal: intake.tdeeKcal)
+                            }
+                        } else if suggestion != nil {
+                            // 提案できるときだけ、ぼかしたカードで「提案があります」と知らせる
+                            LockedCheatDayCard()
                         }
                     }
 
@@ -109,8 +137,6 @@ struct HomeView: View {
             }
         }
     }
-
-    private var isProUnlocked: Bool { pro?.isUnlocked ?? false }
 
     /// 目標までの残り（kg）。目標や記録がなければ nil。
     ///
@@ -162,6 +188,12 @@ private func homePreviewContainer(
     HomeView()
         .modelContainer(homePreviewContainer())
         .environment(ProAccess.previewUnlocked())
+}
+
+#Preview("お試し終了（Pro の中身をぼかす）") {
+    HomeView()
+        .modelContainer(homePreviewContainer())
+        .environment(ProAccess.previewTrialEnded())
 }
 
 #Preview("順調・ダークモード") {
