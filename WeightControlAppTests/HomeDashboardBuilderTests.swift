@@ -23,11 +23,12 @@ struct HomeDashboardBuilderTests {
         profile: DashboardProfile? = nil,
         goal: DashboardGoal? = nil,
         includesPro: Bool = false,
+        cheatDays: [Date] = [],
         now: Date
     ) -> HomeDashboard {
         HomeDashboardBuilder.build(
             points: points, profile: profile, goal: goal, foods: foods,
-            includesPro: includesPro, now: now, calendar: calendar
+            includesPro: includesPro, cheatDays: cheatDays, now: now, calendar: calendar
         )
     }
 
@@ -280,6 +281,51 @@ struct HomeDashboardBuilderTests {
         let free = build(records, profile: profile, goal: goal, now: day(20))
         #expect(free.forecast == dashboard.forecast)
         #expect(free.forecastLine == dashboard.forecastLine)
+    }
+
+    /// チートデーの提案用：0 日目に 80 kg で目標を決め、毎日 0.1 kg ずつ減っている（20 日目に 78 kg）。
+    /// 目標 75 kg・期限 90 日目なので、予定の線の 20 日目は 80 − 5 × 20 ÷ 90 ≒ 78.89 kg → 貯金 約 0.89 kg。
+    private var cheatDayRecords: [WeightPoint] { points(days: 21) { 80 - 0.1 * Double($0) } }
+    private var cheatDayGoal: DashboardGoal {
+        DashboardGoal(targetWeightKg: 75, deadline: day(90), startWeightKg: 80, startDate: day(0))
+    }
+
+    @Test("Pro：予定より先に進んでいればチートデーを提案する。無料版の結果は変わらない")
+    func proCheatDaySuggestion() throws {
+        let dashboard = build(cheatDayRecords, profile: profile, goal: cheatDayGoal, includesPro: true, now: day(20))
+        let suggestion = try #require(dashboard.cheatDaySuggestion?.suggestion)
+        #expect(isApproximately(suggestion.aheadKg, 80 - 5.0 * 20 / 90 - 78, tolerance: 1e-6))
+        #expect(suggestion.suggestedDays == 2)
+        let intake = try #require(dashboard.intake)
+        #expect(suggestion.cheatDayKcal == intake.tdeeKcal)
+        #expect(suggestion.regularDayKcal == intake.targetKcal)
+        #expect(!dashboard.isCheatDayToday)
+
+        let free = build(cheatDayRecords, profile: profile, goal: cheatDayGoal, now: day(20))
+        #expect(free.cheatDaySuggestion == nil)
+        #expect(free.intake == dashboard.intake)
+        #expect(free.forecast == dashboard.forecast)
+    }
+
+    @Test("Pro：今日をチートデーにすると、今日がチートデーになり、提案は残り 1 日になる")
+    func proCheatDayToday() throws {
+        let dashboard = build(
+            cheatDayRecords, profile: profile, goal: cheatDayGoal,
+            includesPro: true, cheatDays: [day(20)], now: day(20)
+        )
+        #expect(dashboard.isCheatDayToday)
+        #expect(dashboard.cheatDaySuggestion?.suggestion?.suggestedDays == 1)
+        // 無料版では、保存したチートデーがあっても「今日はチートデー」にしない
+        let free = build(cheatDayRecords, profile: profile, goal: cheatDayGoal, cheatDays: [day(20)], now: day(20))
+        #expect(!free.isCheatDayToday)
+    }
+
+    @Test("Pro でも、目標を決めた日が分からなければチートデーは提案しない")
+    func proCheatDayWithoutStartDate() {
+        var goal = cheatDayGoal
+        goal.startDate = nil
+        let dashboard = build(cheatDayRecords, profile: profile, goal: goal, includesPro: true, now: day(20))
+        #expect(dashboard.cheatDaySuggestion == nil)
     }
 
     @Test("Pro でも、目標がなければ幅付きの予測は出さない")

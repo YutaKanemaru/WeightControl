@@ -206,4 +206,47 @@ struct DemoScenarioTests {
         #expect(result.calorieHint == nil)
         #expect(result.praise.kind == .trendSteady)
     }
+
+    // MARK: - Pro：チートデーの提案（docs/DEMO_DATA.md の 8.）
+
+    private func proDashboard(_ scenario: DemoScenario) throws -> HomeDashboard {
+        let set = scenario.dataSet(today: now, calendar: calendar)
+        return HomeDashboardBuilder.build(
+            points: set.points,
+            profile: set.profile,
+            goal: set.goal,
+            foods: try FoodCatalog.loadBundledFoods(),
+            includesPro: true,
+            now: now,
+            calendar: calendar
+        )
+    }
+
+    @Test("Pro ①：予定より 0.854 kg 先に進んでいるので、チートデーを 2 日まで提案する")
+    func onTrackCheatDay() throws {
+        let result = try proDashboard(.onTrack)
+        let suggestion = try #require(result.cheatDaySuggestion?.suggestion)
+        #expect(isApproximately(suggestion.plannedWeightKg, 70.886598, tolerance: 0.001))
+        #expect(isApproximately(suggestion.aheadKg, 0.854130, tolerance: 0.001))
+        #expect(isApproximately(suggestion.costKgPerDay, 0.029035, tolerance: 0.0001))
+        #expect(suggestion.suggestedDays == 2)
+        #expect(isApproximately(suggestion.cheatDayKcal, 2190.1339, tolerance: 0.01))
+        #expect(isApproximately(suggestion.regularDayKcal, 1981.0801, tolerance: 0.01))
+        #expect(suggestion.selectableDates == (0..<7).map { day($0) })
+        // Pro でも無料版の目安は変わらない
+        let free = try dashboard(.onTrack)
+        #expect(result.intake == free.intake)
+        #expect(free.cheatDaySuggestion == nil)
+    }
+
+    @Test("Pro ②③：期限に間に合わないので提案しない。④：貯金 0.153 kg なので提案しない")
+    func otherScenariosNoCheatDay() throws {
+        #expect(try proDashboard(.plateau).cheatDaySuggestion == .notSuggested(.notOnTrack))
+        #expect(try proDashboard(.tooAggressive).cheatDaySuggestion == .notSuggested(.notOnTrack))
+        guard case .notSuggested(.notAheadEnough(let aheadKg))? = try proDashboard(.fewRecords).cheatDaySuggestion else {
+            Issue.record("④ は notAheadEnough のはず")
+            return
+        }
+        #expect(isApproximately(aheadKg, 0.152727, tolerance: 0.001))
+    }
 }

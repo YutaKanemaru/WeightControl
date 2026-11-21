@@ -37,6 +37,21 @@ struct StampBookTests {
         #expect(!book.hasWeighIn(on: date(11, 19)))
     }
 
+    @Test("チートデーの印：未来の日にもつき、今月のスタンプの数には数えない")
+    func cheatDayMark() {
+        let book = StampBook(
+            weighInDates: [date(11, 18)],
+            exerciseDates: [],
+            cheatDayDates: [date(11, 19, hour: 0), date(11, 24, hour: 12), date(12, 1)],
+            calendar: calendar
+        )
+        #expect(book.hasCheatDay(on: date(11, 19, hour: 22)))
+        #expect(book.hasCheatDay(on: date(11, 24)))
+        #expect(!book.hasCheatDay(on: date(11, 18)))
+        #expect(book.cheatDayCount(inMonthContaining: today) == 2)
+        #expect(book.stampCount(inMonthContaining: today) == 1)
+    }
+
     // MARK: - 今月のスタンプ数
 
     @Test("今月のスタンプ数：同じ日に何回測っても 1 個、体重と運動は別々に数える、ほかの月は数えない")

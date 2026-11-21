@@ -268,17 +268,28 @@ struct IntakeCard: View {
     let intake: IntakeRecommendation
     /// 消費カロリーをどう計算したか（説明文を変えるため）
     var energyChoice: EnergyExpenditureChoice?
+    /// 今日がチートデー（Pro）か。そのときは目安を維持カロリー（消費カロリーの目安と同じ量）で出す
+    var isCheatDay: Bool = false
 
     var body: some View {
         DashboardCard(title: "1 日の摂取カロリーの目安", systemImage: "fork.knife") {
-            MetricView(
-                value: intake.targetKcal.rounded(),
-                fractionLength: 0,
-                unit: "kcal",
-                caption: Text("消費カロリーの目安 \(Int(intake.tdeeKcal.rounded())) kcal")
-            )
+            if isCheatDay {
+                MetricView(
+                    value: intake.tdeeKcal.rounded(),
+                    fractionLength: 0,
+                    unit: "kcal",
+                    caption: Text("今日はチートデー。ふだんの日の目安は \(Int(intake.targetKcal.rounded())) kcal")
+                )
+            } else {
+                MetricView(
+                    value: intake.targetKcal.rounded(),
+                    fractionLength: 0,
+                    unit: "kcal",
+                    caption: Text("消費カロリーの目安 \(Int(intake.tdeeKcal.rounded())) kcal")
+                )
+            }
             NoticeLabel(text: sourceText)
-            if intake.isRaisedToMinimum {
+            if intake.isRaisedToMinimum && !isCheatDay {
                 NoticeLabel("体のために、これより少なくしないよう下限に合わせています。そのぶん、目標のペースより少しゆっくりになります。")
             }
         }

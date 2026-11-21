@@ -14,6 +14,9 @@ struct StampCalendarView: View {
 
     @Query private var weightEntries: [WeightEntry]
     @Query private var exerciseDays: [ExerciseDay]
+    /// チートデー（Pro）。Pro を使えるときだけカレンダーに印を出す
+    @Query private var cheatDays: [CheatDay]
+    @Environment(ProAccess.self) private var pro: ProAccess?
 
     /// いま表示している月（その月の 1 日）
     @State private var displayedMonth = CalendarMonthBuilder.monthStart(for: .now, calendar: .current)
@@ -27,6 +30,7 @@ struct StampCalendarView: View {
         let stampBook = StampBook(
             weighInDates: weightEntries.map(\.date),
             exerciseDates: exerciseDays.map(\.date),
+            cheatDayDates: showsCheatDays ? cheatDays.map(\.date) : [],
             calendar: calendar
         )
         let summary = CalendarSummaryBuilder.build(stampBook: stampBook, today: .now)
@@ -61,6 +65,9 @@ struct StampCalendarView: View {
             .sensoryFeedback(.success, trigger: stampFeedbackTrigger)
         }
     }
+
+    /// チートデーの印を出すか（Pro を使えるときだけ）
+    private var showsCheatDays: Bool { pro?.isUnlocked ?? false }
 
     // MARK: - 月の切り替え
 
@@ -117,6 +124,13 @@ struct StampCalendarView: View {
             } icon: {
                 StampIcon(kind: .exercise)
             }
+            if showsCheatDays {
+                Label {
+                    Text("チートデー \(stampBook.cheatDayCount(inMonthContaining: displayedMonth))日（ホームのカードで決められます）")
+                } icon: {
+                    StampIcon(kind: .cheatDay)
+                }
+            }
         }
         .font(.footnote)
         .foregroundStyle(.secondary)
@@ -155,7 +169,7 @@ struct StampCalendarView: View {
 
 // MARK: - スタンプの絵
 
-/// スタンプ 1 つ分の絵。SF Symbols のアイコンを、意味のある色（体重＝緑、運動＝オレンジ）の丸の上に白で描きます。
+/// スタンプ 1 つ分の絵。SF Symbols のアイコンを、意味のある色（体重＝緑、運動＝オレンジ、チートデー＝アクセントカラー）の丸の上に白で描きます。
 ///
 /// 大きさは `@ScaledMetric` で文字サイズの設定に合わせて伸び縮みします。
 struct StampIcon: View {
@@ -164,11 +178,14 @@ struct StampIcon: View {
         case weighIn
         /// 運動した日
         case exercise
+        /// チートデー（Pro）
+        case cheatDay
 
         var systemImage: String {
             switch self {
             case .weighIn: "scalemass.fill"
             case .exercise: "figure.run"
+            case .cheatDay: "fork.knife"
             }
         }
 
@@ -176,6 +193,7 @@ struct StampIcon: View {
             switch self {
             case .weighIn: .green
             case .exercise: .orange
+            case .cheatDay: .accentColor
             }
         }
     }
@@ -352,6 +370,7 @@ struct StampMonthGrid: View {
                             cell: cell,
                             hasWeighIn: stampBook.hasWeighIn(on: cell.date),
                             hasExercise: stampBook.hasExercise(on: cell.date),
+                            hasCheatDay: stampBook.hasCheatDay(on: cell.date),
                             height: cellHeight
                         ) {
                             onTapDay(cell.date)
@@ -384,6 +403,8 @@ struct CalendarDayCellView: View {
     let cell: CalendarDayCell
     let hasWeighIn: Bool
     let hasExercise: Bool
+    /// チートデー（Pro）か。未来の日にもつく
+    var hasCheatDay: Bool = false
     let height: CGFloat
     let onTap: () -> Void
 
@@ -406,6 +427,14 @@ struct CalendarDayCellView: View {
                 if cell.isToday {
                     RoundedRectangle(cornerRadius: 12)
                         .strokeBorder(.tint, lineWidth: 2)
+                }
+            }
+            // チートデーの印はマスの右上に小さく（スタンプ 3 つは横に入りきらないため）
+            .overlay(alignment: .topTrailing) {
+                if hasCheatDay {
+                    StampIcon(kind: .cheatDay)
+                        .scaleEffect(0.75)
+                        .offset(x: 3, y: -3)
                 }
             }
             .contentShape(.rect)
@@ -444,6 +473,7 @@ struct CalendarDayCellView: View {
         var parts: [String] = []
         if hasWeighIn { parts.append(String(localized: "体重を記録済み")) }
         if hasExercise { parts.append(String(localized: "運動した")) }
+        if hasCheatDay { parts.append(String(localized: "チートデー")) }
         return parts.isEmpty ? String(localized: "スタンプなし") : parts.joined(separator: "、")
     }
 }
@@ -454,7 +484,7 @@ struct CalendarDayCellView: View {
 @MainActor
 private func emptyCalendarPreviewContainer() -> ModelContainer {
     try! ModelContainer(
-        for: WeightEntry.self, ExerciseDay.self,
+        for: WeightEntry.self, ExerciseDay.self, CheatDay.self,
         configurations: ModelConfiguration(isStoredInMemoryOnly: true)
     )
 }

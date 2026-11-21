@@ -18,6 +18,8 @@ nonisolated struct DashboardGoal: Equatable, Sendable {
     var deadline: Date
     /// 目標を決めたときの体重（kg）。分からなければ nil（そのときは最初の記録を使います）。
     var startWeightKg: Double?
+    /// 目標を決めた日。チートデーの提案（Pro）で「予定の線」を引くのに使います。分からなければ nil（提案しません）。
+    var startDate: Date? = nil
 }
 
 /// ホーム画面に出すものを、まとめて計算した結果。画面はこれを並べるだけにします。
@@ -57,12 +59,16 @@ nonisolated struct HomeDashboard: Equatable, Sendable {
     /// ホームでは `needsHomeAttention` のときだけ「目標を見直してみませんか」のカードを出します。
     var goalBMI: GoalBMIAdvice? = nil
     /// 摂取カロリーの下限（kcal。基礎代謝と、男性 1500・女性 1200 kcal の大きいほう）。プロフィールか記録がなければ nil。
-    /// チートデー計画（Pro）で、ふだんの日もこれを下回らないようにするのに使います。
+    /// 目安がこれを下回らないようにするための値です。
     var minimumIntakeKcal: Double? = nil
     /// Pro：幅付きの達成予測。Pro を使えないとき・目標がないときは nil。
     var forecastRange: ForecastRangeResult? = nil
     /// Pro：グラフの「予測の幅」の帯。Pro を使えないとき・幅付きで予測できないときは空。
     var forecastBand: [ForecastBandPoint] = []
+    /// Pro：チートデーの提案（docs/CHEAT_DAY.md）。Pro を使えないとき・目標や目安がないとき・予測が出ないときは nil。
+    var cheatDaySuggestion: CheatDaySuggestionResult? = nil
+    /// Pro：今日がチートデーか。そのときはホームの摂取カロリーの目安を維持カロリーで出します。
+    var isCheatDayToday: Bool = false
 }
 
 /// ホーム画面のための「とりまとめ役」。
@@ -78,9 +84,11 @@ nonisolated enum HomeDashboardBuilder {
     /// これより小さい差なら「目標＝キープ」とみなす（kg）
     static let maintainToleranceKg = 0.1
 
-    /// - Parameter includesPro: Pro 機能（幅付きの予測と、グラフの帯）も計算するか。
-    ///   `false` のときは無料版の結果だけで、`forecastRange` は nil・`forecastBand` は空になります。
-    ///   Pro を使っても、無料版の結果（予測・点線など）は何も変わりません。
+    /// - Parameters:
+    ///   - includesPro: Pro 機能（幅付きの予測・グラフの帯・チートデーの提案）も計算するか。
+    ///     `false` のときは無料版の結果だけで、`forecastRange` と `cheatDaySuggestion` は nil・`forecastBand` は空になります。
+    ///     Pro を使っても、無料版の結果（予測・点線・摂取カロリーの目安など）は何も変わりません。
+    ///   - cheatDays: チートデーにした日（Pro）。提案の「週 2 日まで」と、今日がチートデーかの判断に使います。
     static func build(
         points: [WeightPoint],
         profile: DashboardProfile?,
@@ -88,6 +96,7 @@ nonisolated enum HomeDashboardBuilder {
         foods: [FoodItem],
         healthActivity: ActivitySummary? = nil,
         includesPro: Bool = false,
+        cheatDays: [Date] = [],
         now: Date,
         calendar: Calendar = .current
     ) -> HomeDashboard {
@@ -233,6 +242,30 @@ nonisolated enum HomeDashboardBuilder {
             }
         }
 
+        // Pro：チートデーの提案（予測と同じ直線から「予定より何 kg 先に進んでいるか」を見る）
+        var cheatDaySuggestion: CheatDaySuggestionResult?
+        if includesPro,
+           let goal,
+           let startDate = goal.startDate,
+           let intake,
+           case .available(let central)? = forecast {
+            cheatDaySuggestion = CheatDaySuggestionAdvisor.suggest(
+                points: points,
+                goal: CheatDayGoal(
+                    targetWeightKg: goal.targetWeightKg,
+                    deadline: goal.deadline,
+                    startDate: startDate,
+                    startWeightKg: goal.startWeightKg
+                ),
+                forecast: central,
+                intake: intake,
+                cheatDays: cheatDays,
+                now: now,
+                calendar: calendar
+            )
+        }
+        let isCheatDayToday = includesPro && CheatDaySuggestionAdvisor.isCheatDay(now, cheatDays: cheatDays, calendar: calendar)
+
         return HomeDashboard(
             trend: trend,
             paceLine: paceLine,
@@ -250,7 +283,9 @@ nonisolated enum HomeDashboardBuilder {
             goalBMI: goalBMI,
             minimumIntakeKcal: minimumIntake,
             forecastRange: forecastRange,
-            forecastBand: forecastBand
+            forecastBand: forecastBand,
+            cheatDaySuggestion: cheatDaySuggestion,
+            isCheatDayToday: isCheatDayToday
         )
     }
 
