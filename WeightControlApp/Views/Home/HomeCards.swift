@@ -350,7 +350,7 @@ struct GoalBMICard: View {
         DashboardCard(title: "目標体重を見直してみませんか", systemImage: "figure.stand", tint: .orange) {
             MetricView("目標の BMI", value: advice.goalBMI, caption: Text(advice.goalBand.label), size: .medium, tint: .orange)
 
-            Text(message)
+            message
                 .font(.callout)
                 .fixedSize(horizontal: false, vertical: true)
 
