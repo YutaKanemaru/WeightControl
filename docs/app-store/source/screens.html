@@ -211,13 +211,13 @@ const shots = {
       </div>`,
   },
   2: { // 予測
-    h: `目標に<em>届く日</em>が、<br>見える。`, p: `直近 3 週間の記録に線を引いて、<br>このペースで届く日を予測します。`,
+    pro: true, h: `目標に<em>届く日</em>が、<br>見える。`, p: `直近 3 週間の記録に線を引いて、<br>このペースで届く日を予測します。`,
     screen: () => `${status()}<div>${nav("ホーム")}</div><div class="content">
       ${card("体重", I.scale, `<div class="row">${metric("最新の体重", "68.4", "kg", "hero", { caption: "11月21日 7:30" })}${metric("目標まで", "5.4", "kg", "medium", { color: "#34C759", caption: "目標 63.0 kg" })}</div>`)}
       ${card("体重のグラフ", I.chart, `${chart()}${legend()}`)}
       ${card("達成の見込み", I.flag, `${metric("このペースなら", "2027年2月26日", "ごろ", "medium", { jp: true, caption: "目標体重に届く見込みです" })}
         ${metric("今のペース（1 週間あたり）", "−0.4", "kg", "medium")}
-        ${notice("期限に間に合うペースです", "ok")}`)}
+        ${notice("期限に間に合うペースです", "ok")}`, { badge: "Pro" })}
     </div>${tabbar(0)}`,
   },
   3: { // カロリー・目標
@@ -294,7 +294,7 @@ const vw = innerWidth, vh = innerHeight;
 const scale = (vw * 0.80) / 402;
 document.documentElement.style.setProperty("--scale", scale);
 document.getElementById("canvas").innerHTML = `
-  <div class="head">${s.pro ? `<div class="pro">Pro 機能（買い切り）</div>` : ""}<h1>${s.h}</h1><p>${s.p}</p></div>
+  <div class="head">${s.pro ? `<div class="pro">Pro 機能・最初の 1 か月は無料</div>` : ""}<h1>${s.h}</h1><p>${s.p}</p></div>
   <div class="phone"><div class="screen">${s.screen()}</div></div>`;
 // 見出しの高さ（2 行か 3 行か）に合わせて、画面のモックをすぐ下に置く
 const headBottom = document.querySelector(".head").getBoundingClientRect().bottom;
