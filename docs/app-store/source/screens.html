@@ -9,7 +9,7 @@
   ?shot=1〜6 で画像を選び、ウィンドウの大きさで 6.9 インチ / 6.5 インチを切り替えます。
 -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&family=Nunito:wght@700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&family=Nunito:wght@700;800&family=M+PLUS+Rounded+1c:wght@500;800;900&family=Zen+Maru+Gothic:wght@500;700;900&family=Zen+Kaku+Gothic+New:wght@500;700;900&family=BIZ+UDPGothic:wght@400;700&family=Kosugi+Maru&family=Murecho:wght@500;800;900&display=swap" rel="stylesheet">
 <style>
   :root {
     --bg1: #FFF6EC; --bg2: #FFE2C2;
@@ -27,7 +27,7 @@
   .canvas { position: relative; width: 100vw; height: 100vh; overflow: hidden; }
 
   /* 見出し */
-  .head { position: absolute; left: 0; right: 0; top: 7.2vh; text-align: center; padding: 0 6vw; }
+  .head { font-family: var(--headFont, "Noto Sans JP"), sans-serif; position: absolute; left: 0; right: 0; top: 7.2vh; text-align: center; padding: 0 6vw; }
   .head h1 { font-weight: 900; font-size: 9.4vw; line-height: 1.28; letter-spacing: .01em; }
   .head h1 em { font-style: normal; color: var(--orange); }
   .head p { margin-top: 1.6vh; font-size: 4.3vw; font-weight: 500; color: var(--ink2); line-height: 1.5; }
@@ -289,6 +289,8 @@ const shots = {
 const q = new URLSearchParams(location.search);
 const n = Number(q.get("shot") || 2);
 const s = shots[n];
+// ?font= で見出しのフォントを試せる（見本づくり用）
+if (q.get("font")) document.documentElement.style.setProperty("--headFont", `"${q.get("font")}"`);
 const vw = innerWidth, vh = innerHeight;
 // 画面のモック: 横幅の 80% に縮小。下は少しはみ出させて、上の見出しの場所を確保する。
 const scale = (vw * 0.80) / 402;
