@@ -21,7 +21,7 @@
   html, body { width: 100%; height: 100%; overflow: hidden; }
   body {
     font-family: "Noto Sans JP", sans-serif; color: var(--ink);
-    background: linear-gradient(170deg, var(--bg1) 0%, var(--bg2) 100%);
+    background: linear-gradient(180deg, #FFFFFF 0%, #FFFFFF 22%, #FFD3A3 48%, #FF9A3C 72%, #FF6F0F 100%);
     -webkit-font-smoothing: antialiased;
   }
   .canvas { position: relative; width: 100vw; height: 100vh; overflow: hidden; }
@@ -38,7 +38,7 @@
   .phone { position: absolute; left: 50%; top: var(--phoneTop, 27vh); width: 402px; height: 874px;
            transform-origin: top center; transform: translateX(-50%) scale(var(--scale));
            border-radius: 54px; background: #1D1D1F; padding: 9px;
-           box-shadow: 0 30px 70px rgba(120,60,0,.22), 0 6px 18px rgba(0,0,0,.12); }
+           box-shadow: 0 30px 70px rgba(150,50,0,.35), 0 6px 18px rgba(0,0,0,.15); }
   .screen { width: 100%; height: 100%; border-radius: 46px; background: var(--screen); overflow: hidden; position: relative; }
   .status { height: 54px; display: flex; align-items: center; justify-content: space-between; padding: 6px 34px 0 40px;
             font-family: Inter, sans-serif; font-weight: 600; font-size: 16px; }
@@ -296,7 +296,7 @@ const vw = innerWidth, vh = innerHeight;
 const scale = (vw * 0.80) / 402;
 document.documentElement.style.setProperty("--scale", scale);
 document.getElementById("canvas").innerHTML = `
-  <div class="head">${s.pro ? `<div class="pro">Pro 機能・最初の 1 か月は無料</div>` : ""}<h1>${s.h}</h1><p>${s.p}</p></div>
+  <div class="head">${s.pro ? `<div class="pro">Pro 機能・1 か月無料で試せます</div>` : ""}<h1>${s.h}</h1><p>${s.p}</p></div>
   <div class="phone"><div class="screen">${s.screen()}</div></div>`;
 // 見出しの高さ（2 行か 3 行か）に合わせて、画面のモックをすぐ下に置く
 const headBottom = document.querySelector(".head").getBoundingClientRect().bottom;
