@@ -1,4 +1,5 @@
 import SwiftUI
+import SwiftData
 
 /// 設定タブの「Pro」セクション：Pro の状態、Pro の画面への入口、開発用の「Pro を試す」スイッチ。
 ///
