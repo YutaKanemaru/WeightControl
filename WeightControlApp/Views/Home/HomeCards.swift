@@ -113,17 +113,23 @@ struct WeightChartCard: View {
     let dashboard: HomeDashboard
     let goalWeightKg: Double?
     let deadline: Date?
+    /// Pro を使えるか。使えないときは、点線の予測と薄い帯を描かない
+    /// （点線が目標の横線と交わる所で、目標に届く日が分かってしまうため。docs/PRO.md）
+    var isProUnlocked: Bool = true
 
     var body: some View {
         DashboardCard(title: "体重のグラフ", systemImage: "chart.xyaxis.line") {
             WeightChartView(
                 measured: dashboard.trend.map { WeightPoint(date: $0.date, weightKg: $0.measuredKg) },
                 paceLine: dashboard.paceLine,
-                forecastLine: dashboard.forecastLine,
+                forecastLine: isProUnlocked ? dashboard.forecastLine : [],
                 goalWeightKg: goalWeightKg,
                 deadline: deadline,
-                forecastBand: dashboard.forecastBand
+                forecastBand: isProUnlocked ? dashboard.forecastBand : []
             )
+            if !isProUnlocked, !dashboard.forecastLine.isEmpty {
+                ProLockedHint("目標までの点線の予測は Pro で見られます")
+            }
             notice
         }
     }
@@ -155,6 +161,8 @@ struct LowAccuracyNotice: View {
 
 struct ForecastCard: View {
     let forecast: GoalForecastResult
+    /// Pro を使えるか。使えないときは「目標に届く日」だけをぼかす（ペースと期限の判定は無料のまま。docs/PRO.md）
+    var isProUnlocked: Bool = true
 
     var body: some View {
         DashboardCard(title: "達成の見込み", systemImage: "flag.checkered") {
@@ -177,12 +185,19 @@ struct ForecastCard: View {
             case .reached:
                 MetricView(text: Text("届いています"), caption: Text("目標体重に届いています。おめでとうございます！"), tint: .green)
             case .willReach(let date):
-                MetricView(
-                    "このペースなら",
-                    text: Text(date, format: .dateTime.year().month().day()),
-                    unit: "ごろ",
-                    caption: Text("目標体重に届く見込みです")
-                )
+                if isProUnlocked {
+                    MetricView(
+                        "このペースなら",
+                        text: Text(date, format: .dateTime.year().month().day()),
+                        unit: "ごろ",
+                        caption: Text("目標体重に届く見込みです")
+                    )
+                } else {
+                    // 本当の日付ではなく、決まった見本の文字をぼかす
+                    ProLockedContent("目標に届く日は Pro で見られます") {
+                        MetricView("このペースなら", text: Text(verbatim: "2027/3/8"), unit: "ごろ", caption: Text("目標体重に届く見込みです"))
+                    }
+                }
             case .notApproaching:
                 VStack(alignment: .leading, spacing: 4) {
                     Text("いまは目標に向かう流れが、まだ見えていません。")
