@@ -72,7 +72,7 @@ struct CheatDayPlannerView: View {
                 desiredCheatDayExtraKcal: usesDesiredExtra ? desiredExtraKcal : nil,
                 maintenanceKcal: intake.tdeeKcal
             )
-            let plan: CheatDayPlan? = if case .available(let value) = result { value } else { nil }
+            let plan = availablePlan(result)
 
             List {
                 summarySection(plan: plan, intake: intake)
@@ -221,6 +221,12 @@ struct CheatDayPlannerView: View {
     }
 
     // MARK: - 補助
+
+    /// 計画できたときだけ、その計画（ごほうびの日を選んでいないときは nil）
+    private func availablePlan(_ result: CheatDayPlanResult) -> CheatDayPlan? {
+        if case .available(let plan) = result { return plan }
+        return nil
+    }
 
     private func toggle(_ offset: Int) {
         if cheatDayOffsets.contains(offset) {
