@@ -1,0 +1,306 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<title>App Store screenshots</title>
+<!--
+  App Store のプレビュー画像（スクリーンショット）の元になるページです。
+  アプリの画面（SwiftUI）の見た目を HTML で写した「モック」で、render.mjs が画像に書き出します。
+  ?shot=1〜6 で画像を選び、ウィンドウの大きさで 6.9 インチ / 6.5 インチを切り替えます。
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&family=Nunito:wght@700;800&family=M+PLUS+Rounded+1c:wght@500;800;900&family=Zen+Maru+Gothic:wght@500;700;900&family=Zen+Kaku+Gothic+New:wght@500;700;900&family=BIZ+UDPGothic:wght@400;700&family=Kosugi+Maru&family=Murecho:wght@500;800;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg1: #FFF6EC; --bg2: #FFE2C2;
+    --ink: #1D1D1F; --ink2: #6E6E73; --orange: #F07A1A;
+    --accent: #007AFF; --green: #34C759; --sysorange: #FF9500; --yellow: #FFCC00;
+    --screen: #F2F2F7; --card: #FFFFFF; --sep: rgba(60,60,67,.12);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 100%; height: 100%; overflow: hidden; }
+  body {
+    font-family: "Noto Sans JP", sans-serif; color: var(--ink);
+    background: linear-gradient(180deg, #FFFFFF 0%, #FFFFFF 22%, #FFD3A3 48%, #FF9A3C 72%, #FF6F0F 100%);
+    -webkit-font-smoothing: antialiased;
+  }
+  .canvas { position: relative; width: 100vw; height: 100vh; overflow: hidden; }
+
+  /* 見出し */
+  .head { font-family: var(--headFont, "Noto Sans JP"), sans-serif; position: absolute; left: 0; right: 0; top: 7.2vh; text-align: center; padding: 0 6vw; }
+  .head h1 { font-weight: 900; font-size: 9.4vw; line-height: 1.28; letter-spacing: .01em; }
+  .head h1 em { font-style: normal; color: var(--orange); }
+  .head p { margin-top: 1.6vh; font-size: 4.3vw; font-weight: 500; color: var(--ink2); line-height: 1.5; }
+  .pro { display: inline-block; font-size: 3.4vw; font-weight: 700; color: #fff; background: var(--orange);
+         border-radius: 999px; padding: .2em .8em; margin-bottom: 1.2vh; letter-spacing: .05em; }
+
+  /* 画面のモック（論理サイズ 402×874 pt を縮小して置く） */
+  .phone { position: absolute; left: 50%; top: var(--phoneTop, 27vh); width: 402px; height: 874px;
+           transform-origin: top center; transform: translateX(-50%) scale(var(--scale));
+           border-radius: 54px; background: #1D1D1F; padding: 9px;
+           box-shadow: 0 30px 70px rgba(150,50,0,.35), 0 6px 18px rgba(0,0,0,.15); }
+  .screen { width: 100%; height: 100%; border-radius: 46px; background: var(--screen); overflow: hidden; position: relative; }
+  .status { height: 54px; display: flex; align-items: center; justify-content: space-between; padding: 6px 34px 0 40px;
+            font-family: Inter, sans-serif; font-weight: 600; font-size: 16px; }
+  .status .island { width: 118px; height: 34px; border-radius: 20px; background: #000; }
+  .status .r { display: flex; gap: 6px; align-items: center; }
+  .navbar { padding: 4px 18px 6px; display: flex; justify-content: space-between; align-items: flex-end; }
+  .navbar h2 { font-size: 32px; font-weight: 700; letter-spacing: .01em; }
+  .navbar.inline { justify-content: space-between; align-items: center; padding: 6px 18px 10px; }
+  .navbar.inline h3 { font-size: 17px; font-weight: 700; }
+  .navbar .btn { color: var(--accent); font-size: 17px; font-weight: 500; }
+  .circlebtn { width: 40px; height: 40px; border-radius: 50%; background: rgba(255,255,255,.9);
+               box-shadow: 0 1px 4px rgba(0,0,0,.08); display: grid; place-items: center; color: var(--accent); }
+  .content { padding: 4px 16px; display: flex; flex-direction: column; gap: 14px; }
+
+  .card { background: var(--card); border-radius: 20px; padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+  .card .t { display: flex; align-items: center; gap: 7px; font-size: 15px; font-weight: 700; color: var(--accent); }
+  .card .t.orange { color: var(--sysorange); } .card .t.yellow { color: #C9A000; }
+  .badge { font-size: 11px; font-weight: 700; color: var(--accent); border: 1.5px solid var(--accent); border-radius: 6px; padding: 0 5px; margin-left: 4px; }
+  .mlabel { font-size: 14px; color: var(--ink2); }
+  .mval { display: flex; align-items: baseline; gap: 4px; font-family: Nunito, "Noto Sans JP", sans-serif; font-weight: 800; font-variant-numeric: tabular-nums; }
+  .mval .u { font-weight: 700; color: var(--ink2); }
+  .hero { font-size: 58px; line-height: 1.05; } .hero .u { font-size: 24px; }
+  .large { font-size: 36px; line-height: 1.1; } .large .u { font-size: 19px; }
+  .medium { font-size: 24px; line-height: 1.15; } .medium .u { font-size: 16px; }
+  .mval.jp { font-family: "Noto Sans JP", sans-serif; font-weight: 700; }
+  .caption { font-size: 13px; color: var(--ink2); line-height: 1.45; }
+  .row { display: flex; justify-content: space-between; align-items: flex-end; }
+  .notice { display: flex; gap: 6px; font-size: 13px; line-height: 1.5; color: var(--ink2); }
+  .notice svg { flex: none; margin-top: 2px; }
+  .notice.ok, .notice.warn { color: var(--ink); }
+  .praise { background: rgba(255,149,0,.12); border-radius: 20px; padding: 16px; display: flex; gap: 12px; }
+  .praise .msg { font-size: 16px; font-weight: 500; line-height: 1.5; }
+  .praise .sub { font-size: 13px; color: var(--ink2); margin-top: 3px; }
+  .bbtn { white-space: nowrap; border-radius: 999px; padding: 9px 14px; font-size: 15px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; }
+  .bbtn.prom { background: var(--accent); color: #fff; }
+  .bbtn.tint { background: rgba(0,122,255,.12); color: var(--accent); }
+  .text { font-size: 15px; line-height: 1.55; }
+  .seg { display: flex; background: rgba(118,118,128,.12); border-radius: 9px; padding: 2px; }
+  .seg div { flex: 1; text-align: center; font-size: 14px; padding: 6px 0; border-radius: 7px; font-weight: 500; }
+  .seg .on { background: #fff; box-shadow: 0 2px 6px rgba(0,0,0,.1); font-weight: 600; }
+  .listrow { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--sep); font-size: 16px; }
+  .listrow:last-child { border-bottom: 0; }
+  .icn { width: 30px; height: 30px; border-radius: 8px; display: grid; place-items: center; flex: none; }
+  .legend { display: flex; gap: 14px; font-size: 12px; color: var(--ink2); }
+  .legend span { display: inline-flex; align-items: center; gap: 5px; }
+
+  /* カレンダー */
+  .cal { display: grid; grid-template-columns: repeat(7, 1fr); row-gap: 6px; text-align: center; }
+  .cal .wd { font-size: 12px; color: var(--ink2); font-weight: 500; padding-bottom: 2px; }
+  .cal .d { height: 44px; display: flex; flex-direction: column; align-items: center; gap: 2px; font-size: 14px; font-family: Inter, sans-serif; font-weight: 500; }
+  .cal .d.today .n { background: var(--accent); color: #fff; border-radius: 50%; width: 24px; height: 24px; display: grid; place-items: center; }
+  .cal .d.fut { color: #C7C7CC; }
+  .stamps { display: flex; gap: 2px; }
+  .dot { width: 15px; height: 15px; border-radius: 50%; display: grid; place-items: center; }
+
+  /* 入力画面（シート） */
+  .sheetbg { position: absolute; inset: 0; background: rgba(0,0,0,.18); }
+  .sheet { position: absolute; left: 0; right: 0; top: 64px; bottom: 0; background: var(--screen); border-radius: 38px 38px 0 0; }
+  .bigfield { font-family: Nunito, sans-serif; font-weight: 800; font-size: 72px; display: flex; align-items: baseline; gap: 6px; justify-content: center; font-variant-numeric: tabular-nums; }
+  .bigfield .u { font-size: 30px; color: var(--ink2); }
+  .caret { display: inline-block; width: 3px; height: 62px; background: var(--accent); margin-left: 2px; transform: translateY(6px); }
+  .steps { display: flex; gap: 10px; }
+  .steps div { flex: 1; text-align: center; background: rgba(0,122,255,.12); color: var(--accent); border-radius: 14px; padding: 12px 0; font-size: 15px; font-weight: 600; }
+  .savebtn { margin: 4px 16px 0; background: var(--accent); color: #fff; text-align: center; border-radius: 999px; padding: 15px; font-size: 17px; font-weight: 700; }
+  .keyboard { position: absolute; left: 0; right: 0; bottom: 0; height: 300px; background: #D1D3D9; padding: 10px 6px 40px; display: grid; grid-template-columns: repeat(3,1fr); gap: 7px; }
+  .keyboard div { background: #fff; border-radius: 8px; display: grid; place-items: center; font-family: Inter, sans-serif; font-size: 26px; box-shadow: 0 1px 0 rgba(0,0,0,.25); }
+  .keyboard div.blank { background: transparent; box-shadow: none; }
+
+  .tabbar { position: absolute; left: 20px; right: 20px; bottom: 26px; height: 64px; border-radius: 32px;
+            background: rgba(255,255,255,.86); box-shadow: 0 4px 20px rgba(0,0,0,.10);
+            display: flex; justify-content: space-around; align-items: center; }
+  .tabbar div { display: flex; flex-direction: column; align-items: center; gap: 2px; font-size: 10px; font-weight: 600; color: #8E8E93; }
+  .tabbar div.on { color: var(--accent); }
+  .disc { font-size: 11px; color: var(--ink2); text-align: center; line-height: 1.5; padding: 0 8px; }
+</style>
+</head>
+<body>
+<div class="canvas" id="canvas"></div>
+<script>
+// ---------- アイコン（SF Symbols の代わりの簡単な図形） ----------
+const I = {
+  scale: c => `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="${c}" stroke-width="2.2" stroke-linecap="round"><rect x="3" y="3" width="18" height="18" rx="5"/><path d="M8 9a5 5 0 0 1 8 0"/><path d="M12 9l1.5-2"/></svg>`,
+  chart: c => `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="${c}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M6 8l4 3 4-2 5 6"/></svg>`,
+  flag: c => `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="${c}" stroke-width="2.2" stroke-linecap="round"><path d="M5 21V4"/><path d="M5 4h12l-2 4 2 4H5" fill="${c}" fill-opacity=".25"/></svg>`,
+  fork: c => `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="${c}" stroke-width="2.2" stroke-linecap="round"><path d="M7 3v8M4.5 3v5a2.5 2.5 0 0 0 5 0V3M7 11v10"/><path d="M17 21V3c-2.5 1.5-3.5 4-3.5 7.5V13H17"/></svg>`,
+  bulb: c => `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="${c}" stroke-width="2.2" stroke-linecap="round"><path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 0 0-3.5 10.9c.6.5 1 1.2 1 2.1h5c0-.9.4-1.6 1-2.1A6 6 0 0 0 12 3z"/></svg>`,
+  range: c => `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="${c}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h18M7 8l-4 4 4 4M17 8l4 4-4 4"/></svg>`,
+  flame: c => `<svg width="18" height="18" viewBox="0 0 24 24" fill="${c}"><path d="M12 2c1 4 5 6 5 11a5 5 0 0 1-10 0c0-2 1-3.5 2-4.5 0 2 1 3 2 3-1-3 0-6 1-9.5z"/></svg>`,
+  cal: c => `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="${c}" stroke-width="2.2" stroke-linecap="round"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>`,
+  seal: c => `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="${c}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l2.4 1.8 3-.2 1 2.8 2.6 1.6-.8 2.9.8 2.9-2.6 1.6-1 2.8-3-.2L12 22l-2.4-1.8-3 .2-1-2.8L3 16l.8-2.9L3 10.2l2.6-1.6 1-2.8 3 .2z"/><path d="M8.5 12l2.5 2.5 4.5-5"/></svg>`,
+  heart: c => `<svg width="18" height="18" viewBox="0 0 24 24" fill="${c}"><path d="M12 21s-8-5-8-11a4.5 4.5 0 0 1 8-2.8A4.5 4.5 0 0 1 20 10c0 6-8 11-8 11z"/></svg>`,
+  lock: c => `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="${c}" stroke-width="2.2" stroke-linecap="round"><rect x="5" y="10" width="14" height="11" rx="2.5"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>`,
+  phone: c => `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="${c}" stroke-width="2.2"><rect x="6" y="2" width="12" height="20" rx="3"/><path d="M10 5h4" stroke-linecap="round"/></svg>`,
+  noad: c => `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="${c}" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M5.6 5.6l12.8 12.8"/></svg>`,
+  person: c => `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="${c}" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c1-4 4.5-6 8-6s7 2 8 6"/></svg>`,
+  health: c => `<svg width="18" height="18" viewBox="0 0 24 24" fill="${c}"><path d="M12 20s-7-4.4-7-9.6A3.9 3.9 0 0 1 12 8a3.9 3.9 0 0 1 7 2.4C19 15.6 12 20 12 20z"/></svg>`,
+  run: c => `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="${c}" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="14" cy="4" r="2" fill="${c}"/><path d="M10 21l2-6 3 2v5M7 12l3-4 4 1 2 3 3 1"/></svg>`,
+  chev: c => `<svg width="10" height="16" viewBox="0 0 10 16" fill="none" stroke="${c}" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M2 2l6 6-6 6"/></svg>`,
+  plus: c => `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="${c}" stroke-width="2.8" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>`,
+  ok: `<svg width="15" height="15" viewBox="0 0 24 24"><circle cx="12" cy="12" r="11" fill="#34C759"/><path d="M7 12.5l3.2 3.2L17 9" stroke="#fff" stroke-width="2.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
+  info: `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#8E8E93" stroke-width="2.2"><circle cx="12" cy="12" r="10"/><path d="M12 11v6M12 7.5v.5" stroke-linecap="round"/></svg>`,
+  thumb: c => `<svg width="26" height="26" viewBox="0 0 24 24" fill="${c}"><path d="M2 10h4v11H2zM8 21h9.5a2.5 2.5 0 0 0 2.4-1.9l1.5-6A2.5 2.5 0 0 0 19 10h-5l.8-4.2A2 2 0 0 0 12.8 3.5L8 10z"/></svg>`,
+  star: c => `<svg width="26" height="26" viewBox="0 0 24 24" fill="${c}"><path d="M12 2.5l2.9 6.1 6.6.8-4.9 4.6 1.3 6.6L12 17.3l-5.9 3.3 1.3-6.6-4.9-4.6 6.6-.8z"/></svg>`,
+};
+const notice = (text, kind = "info") => `<div class="notice ${kind}">${kind === "ok" ? I.ok : I.info}<div>${text}</div></div>`;
+const card = (title, icon, body, opt = {}) => `<div class="card"><div class="t ${opt.cls || ""}">${icon(opt.color || "#007AFF")}<span>${title}</span>${opt.badge ? `<span class="badge">${opt.badge}</span>` : ""}</div>${body}</div>`;
+const metric = (label, value, unit, size, opt = {}) => `<div>${label ? `<div class="mlabel">${label}</div>` : ""}<div class="mval ${size} ${opt.jp ? "jp" : ""}" style="color:${opt.color || "var(--ink)"}">${value}${unit ? `<span class="u">${unit}</span>` : ""}</div>${opt.caption ? `<div class="caption">${opt.caption}</div>` : ""}</div>`;
+const status = () => `<div class="status"><span>7:30</span><div class="island"></div><div class="r">
+  <svg width="18" height="12" viewBox="0 0 18 12"><rect x="0" y="8" width="3" height="4" rx="1" fill="#000"/><rect x="5" y="5" width="3" height="7" rx="1" fill="#000"/><rect x="10" y="2.5" width="3" height="9.5" rx="1" fill="#000"/><rect x="15" y="0" width="3" height="12" rx="1" fill="#000"/></svg>
+  <svg width="26" height="13" viewBox="0 0 26 13"><rect x=".5" y=".5" width="22" height="12" rx="3.5" fill="none" stroke="#000" opacity=".4"/><rect x="2.5" y="2.5" width="16" height="8" rx="2" fill="#000"/><rect x="23.5" y="4.5" width="2" height="4" rx="1" fill="#000" opacity=".4"/></svg></div></div>`;
+const tabbar = (on) => `<div class="tabbar">${[["ホーム","house"],["記録","list"],["カレンダー","cal"],["設定","gear"]].map(([n],i)=>`<div class="${i===on?"on":""}">${tabIcon(i, i===on?"#007AFF":"#8E8E93")}${n}</div>`).join("")}</div>`;
+function tabIcon(i, c) {
+  return [
+    `<svg width="26" height="24" viewBox="0 0 24 24" fill="${c}"><path d="M3 11l9-8 9 8v9a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z"/></svg>`,
+    `<svg width="26" height="24" viewBox="0 0 24 24" fill="none" stroke="${c}" stroke-width="2.2" stroke-linecap="round"><path d="M9 6h12M9 12h12M9 18h12"/><circle cx="4" cy="6" r="1.3" fill="${c}"/><circle cx="4" cy="12" r="1.3" fill="${c}"/><circle cx="4" cy="18" r="1.3" fill="${c}"/></svg>`,
+    `<svg width="26" height="24" viewBox="0 0 24 24" fill="none" stroke="${c}" stroke-width="2.2"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4" stroke-linecap="round"/></svg>`,
+    `<svg width="26" height="24" viewBox="0 0 24 24" fill="none" stroke="${c}" stroke-width="2.2"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1" stroke-linecap="round"/></svg>`,
+  ][i];
+}
+const nav = (title, plus = true) => `<div class="navbar"><h2>${title}</h2>${plus ? `<div class="circlebtn">${I.plus("#007AFF")}</div>` : ""}</div>`;
+
+// ---------- グラフ（測った体重の点・直近 3 週間の直線・予測の点線・目標の横線・期限の縦線） ----------
+function chart({ band = false } = {}) {
+  const W = 338, H = 190, padL = 30, padR = 8, padT = 16, padB = 22;
+  // 体重のデータ（点）: 10/10〜11/21 の 6 週間。だんだん下がる。
+  const pts = [];
+  let seed = 7; const rnd = () => (seed = (seed * 9301 + 49297) % 233280) / 233280;
+  for (let d = 0; d <= 42; d++) {
+    if (d % 5 === 3 && d < 40) continue; // 測り忘れの日
+    const base = 71.2 - d * 0.066;
+    pts.push([d, base + (rnd() - .5) * 0.9]);
+  }
+  pts[pts.length - 1][1] = 68.4;
+  const xMax = 42 + 136, yMin = 62, yMax = 72;
+  const X = d => padL + (d / xMax) * (W - padL - padR);
+  const Y = v => padT + (1 - (v - yMin) / (yMax - yMin)) * (H - padT - padB);
+  const reachDay = 42 + 97, deadlineDay = 42 + 130; // 3月31日
+  let s = `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" style="font-family:Inter,sans-serif">`;
+  for (const v of [64, 66, 68, 70, 72]) s += `<line x1="${padL}" x2="${W - padR}" y1="${Y(v)}" y2="${Y(v)}" stroke="rgba(60,60,67,.10)"/><text x="${padL - 6}" y="${Y(v) + 4}" font-size="10" fill="#8E8E93" text-anchor="end">${v}</text>`;
+  [["10月", 0], ["11月", 22], ["12月", 52], ["1月", 83], ["2月", 114], ["3月", 142]].forEach(([m, d]) => s += `<text x="${X(d)}" y="${H - 5}" font-size="10" fill="#8E8E93">${m}</text>`);
+  if (band) s += `<path d="M${X(42)} ${Y(68.4)} L${X(reachDay - 14)} ${Y(63)} L${X(reachDay + 20)} ${Y(63)} Z" fill="rgba(0,122,255,.15)"/>`;
+  // 目標の横線と期限の縦線
+  s += `<line x1="${padL}" x2="${W - padR}" y1="${Y(63)}" y2="${Y(63)}" stroke="#34C759" stroke-width="1.5" stroke-dasharray="2 3"/><text x="${padL + 4}" y="${Y(63) - 5}" font-size="11" font-weight="600" fill="#34C759" font-family="Noto Sans JP">目標 63.0 kg</text>`;
+  s += `<line x1="${X(deadlineDay)}" x2="${X(deadlineDay)}" y1="${padT}" y2="${H - padB}" stroke="#8E8E93" stroke-width="1" stroke-dasharray="2 3"/><text x="${X(deadlineDay) - 3}" y="${padT - 4}" font-size="10" fill="#8E8E93" text-anchor="end" font-family="Noto Sans JP">期限 3/31</text>`;
+  for (const [d, v] of pts) s += `<circle cx="${X(d)}" cy="${Y(v)}" r="2.6" fill="rgba(142,142,147,.75)"/>`;
+  s += `<line x1="${X(21)}" y1="${Y(68.4 + 21 * 0.057)}" x2="${X(42)}" y2="${Y(68.4)}" stroke="#007AFF" stroke-width="3" stroke-linecap="round"/>`;
+  s += `<line x1="${X(42)}" y1="${Y(68.4)}" x2="${X(reachDay)}" y2="${Y(63)}" stroke="rgba(0,122,255,.75)" stroke-width="2.5" stroke-linecap="round" stroke-dasharray="6 5"/>`;
+  s += `<circle cx="${X(reachDay)}" cy="${Y(63)}" r="4.5" fill="#fff" stroke="#007AFF" stroke-width="2.5"/>`;
+  return s + `</svg>`;
+}
+const legend = (band) => `<div class="legend"><span><i style="width:7px;height:7px;border-radius:50%;background:#8E8E93;display:inline-block"></i>測った体重</span><span><i style="width:16px;height:3px;background:#007AFF;border-radius:2px;display:inline-block"></i>直近3週間</span><span><i style="width:16px;border-top:2.5px dashed #007AFF;display:inline-block"></i>予測</span>${band ? `<span><i style="width:14px;height:9px;background:rgba(0,122,255,.2);display:inline-block"></i>幅</span>` : ""}</div>`;
+
+// ---------- 画面ごとの中身 ----------
+const shots = {
+  1: { // 入力
+    h: `毎日、<em>体重</em>を<br>入れるだけ。`, p: `必要な入力はあなたの体重だけ。<br>そこからペースを予測します。`,
+    screen: () => `${status()}
+      <div style="padding:0 18px">${nav("ホーム")}</div>
+      <div class="sheetbg"></div>
+      <div class="sheet">
+        <div class="navbar inline" style="padding-top:18px"><span class="btn">キャンセル</span><h3>体重を記録</h3><span style="width:70px"></span></div>
+        <div class="content">
+          ${card("体重", I.scale, `<div class="bigfield">68.4<span class="caret"></span><span class="u">kg</span></div>
+            <div class="steps"><div>− 0.1 kg</div><div>＋ 0.1 kg</div></div>
+            ${notice("前回 68.6 kg（11月20日）")}`)}
+          ${card("日時", I.cal, `<div class="row" style="align-items:center"><span class="text">今日</span><span style="background:rgba(118,118,128,.12);border-radius:8px;padding:5px 10px;font-size:15px">11月21日 7:30</span></div>`)}
+        </div>
+        <div class="savebtn">記録する</div>
+        <div class="keyboard">${["1","2","3","4","5","6","7","8","9",".","0","⌫"].map(k => `<div>${k}</div>`).join("")}</div>
+      </div>`,
+  },
+  2: { // 予測
+    pro: true, h: `目標に<em>届く日</em>が、<br>見える。`, p: `直近のデータからペースを予測し、<br>目標達成見込みの日程を推測します。`,
+    screen: () => `${status()}<div>${nav("ホーム")}</div><div class="content">
+      ${card("体重", I.scale, `<div class="row">${metric("最新の体重", "68.4", "kg", "hero", { caption: "11月21日 7:30" })}${metric("目標まで", "5.4", "kg", "medium", { color: "#34C759", caption: "目標 63.0 kg" })}</div>`)}
+      ${card("体重のグラフ", I.chart, `${chart()}${legend()}`)}
+      ${card("達成の見込み", I.flag, `${metric("このペースなら", "2027年2月26日", "ごろ", "medium", { jp: true, caption: "目標体重に届く見込みです" })}
+        ${metric("今のペース（1 週間あたり）", "−0.4", "kg", "medium")}
+        ${notice("期限に間に合うペースです", "ok")}`, { badge: "Pro" })}
+    </div>${tabbar(0)}`,
+  },
+  3: { // カロリー・目標
+    h: `食べる量の<em>目安</em>も、<br>アプリにおまかせ。`, p: `無理のない期限の提案から、<br>1 日の摂取カロリーの目安まで。`,
+    screen: () => `${status()}<div>${nav("ホーム")}</div><div class="content">
+      ${card("1 日の摂取カロリーの目安", I.fork, `${metric("", "1,650", "kcal", "large", { caption: "消費カロリーの目安 2,150 kcal" })}
+        ${notice("基礎代謝と、ヘルスケアの実績（直近 7 日の平均アクティブエネルギー）から計算しています。")}`)}
+      ${card("ちょっとしたヒント", I.bulb, `<div class="text">体重の動きから見ると、計画より 1 日あたり<b>おにぎり半分</b>（約 90 kcal）ほど多めのようです。</div><div class="caption" style="font-size:14px">おやつや飲み物を少し控えるなど、できそうなことから 1 つ試してみませんか。</div>`, { color: "#C9A000", cls: "yellow" })}
+      ${card("目標", I.flag, `<div class="seg"><div class="on">ゆるやか</div><div>ハード</div><div>自分で決める</div></div>
+        ${metric("目標に届く日の目安", "2027年3月31日", "", "medium", { jp: true, caption: "約 4 か月・1 週間に 0.34 kg" })}
+        ${notice("目標の BMI 22.1（ふつうの範囲）。無理のないペースです。", "ok")}`)}
+    </div>${tabbar(0)}`,
+  },
+  4: { // ほめる・カレンダー
+    h: `<em>ほめて</em>くれるから、<br>続けられる。`, p: `記録するたびにひとこと。<br>続けた日はカレンダーにスタンプ。`,
+    screen: () => {
+      const days = []; // 2026年11月: 1日は日曜
+      for (let d = 1; d <= 30; d++) {
+        const st = [];
+        if (d <= 21 && d !== 8 && d !== 3) st.push("w");
+        if ([2, 5, 9, 12, 14, 16, 19, 21].includes(d)) st.push("e");
+        days.push({ d, st, fut: d > 21, today: d === 21 });
+      }
+      const cell = x => `<div class="d ${x.fut ? "fut" : ""} ${x.today ? "today" : ""}"><span class="n">${x.d}</span><div class="stamps">${x.st.map(t => t === "w"
+        ? `<span class="dot" style="background:#34C759">${I.scale("#fff").replace('width="18" height="18"', 'width="10" height="10"')}</span>`
+        : `<span class="dot" style="background:#FF9500">${I.run("#fff")}</span>`).join("")}</div></div>`;
+      return `${status()}<div>${nav("カレンダー", false)}</div><div class="content">
+        <div class="praise">${I.thumb("#FF9500")}<div><div class="msg">この1週間で 0.4 kg 目標に近づきました。いい流れです！</div><div class="sub">連続 13 日記録中</div></div></div>
+        ${card("続けている記録", I.flame, `<div class="row" style="justify-content:flex-start;gap:40px">${metric("連続記録", "13", "日", "large", { caption: "今日も記録できました" })}${metric("今月のスタンプ", "27", "個", "large", { caption: "体重 19日・運動 8日" })}</div>
+          ${notice("13日続いています。習慣になってきましたね！", "ok")}`, { color: "#FF9500", cls: "orange" })}
+        ${card("スタンプカレンダー", I.cal, `<div style="text-align:center;font-weight:700;font-size:16px">2026年11月</div>
+          <div class="cal">${["日", "月", "火", "水", "木", "金", "土"].map(w => `<div class="wd">${w}</div>`).join("")}${days.map(cell).join("")}</div>`)}
+      </div>${tabbar(2)}`;
+    },
+  },
+  5: { // Pro
+    pro: true, h: `順調なら、<br><em>チートデー</em>も提案。`, p: `チートデーも正しく取ることで、<br>リバウンドしにくい続け方を<br>サポートします。`,
+    screen: () => `${status()}<div>${nav("ホーム")}</div><div class="content">
+      ${card("チートデー", I.fork, `${metric("予定より", "0.7", "kg 先に進んでいます", "large", { color: "#34C759", caption: "予定の線 69.1 kg・今の体重の目安 68.4 kg" })}
+        <div class="text" style="font-size:14.5px">この 7 日のうち 2 日まで、2,150 kcal まで食べても期限に間に合う見込みです。ほかの日は今までどおり 1,650 kcal が目安です。</div>
+        <div style="display:flex;gap:8px"><span class="bbtn prom">今日にする</span><span class="bbtn tint">明日にする</span><span class="bbtn tint">${I.cal("#007AFF").replace(/18/g, "15")}日を選ぶ</span></div>
+        ${notice("食べ放題の日ではなく、体重を保つ量（維持カロリー）までの日です。医療アドバイスではありません。")}`, { badge: "Pro" })}
+      ${card("見込みの幅", I.range, `${metric("早ければ〜遅くても", "2月12日〜3月18日", "ごろ", "medium", { jp: true, caption: "まん中の見込みは 2027年2月26日" })}
+        ${chart({ band: true })}`, { badge: "Pro" })}
+    </div>`,
+  },
+  6: { // プライバシー・ヘルスケア
+    h: `データは<br><em>iPhone</em> の中だけ。`, p: `アカウント登録なし・広告なし。<br>「ヘルスケア」の記録に、目標と期限を。`,
+    screen: () => {
+      const row = (icon, bg, title, sub) => `<div class="listrow"><div class="icn" style="background:${bg}">${icon("#fff")}</div><div style="flex:1"><div>${title}</div>${sub ? `<div class="caption">${sub}</div>` : ""}</div>${I.chev("#C7C7CC")}</div>`;
+      return `${status()}<div>${nav("設定", false)}</div><div class="content">
+        ${card("目標", I.flag, `<div class="row">${metric("目標体重", "63.0", "kg", "large", { caption: "期限 2027年3月31日・ゆるやか" })}<span class="btn" style="color:#007AFF;font-size:16px">変更</span></div>`)}
+        <div class="card" style="padding:4px 16px">
+          ${row(I.health, "#007AFF", "ヘルスケア連携", "体重の読み書き・運動した日のスタンプ")}
+          ${row(I.cal, "#FF9500", "記録のリマインド", "毎朝 7:00")}
+          ${row(I.person, "#8E8E93", "プロフィール", "")}
+        </div>
+        ${card("あなたのデータ", I.lock, `
+          ${notice("記録はこの iPhone の中だけに保存します。外部のサーバーには送りません。", "ok")}
+          ${notice("アカウント登録はいりません。", "ok")}
+          ${notice("広告はありません。", "ok")}`)}
+        <div class="disc">予測やカロリーは一般的な計算式による目安です。<br>このアプリは医療アドバイスではありません。</div>
+      </div>${tabbar(3)}`;
+    },
+  },
+};
+
+// ---------- 組み立て ----------
+const q = new URLSearchParams(location.search);
+const n = Number(q.get("shot") || 2);
+const s = shots[n];
+// ?font= で見出しのフォントを試せる（見本づくり用）
+if (q.get("font")) document.documentElement.style.setProperty("--headFont", `"${q.get("font")}"`);
+const vw = innerWidth, vh = innerHeight;
+// 画面のモック: 横幅の 80% に縮小。下は少しはみ出させて、上の見出しの場所を確保する。
+const scale = (vw * 0.80) / 402;
+document.documentElement.style.setProperty("--scale", scale);
+document.getElementById("canvas").innerHTML = `
+  <div class="head">${s.pro ? `<div class="pro">Pro 機能・1 か月無料で試せます</div>` : ""}<h1>${s.h}</h1><p>${s.p}</p></div>
+  <div class="phone"><div class="screen">${s.screen()}</div></div>`;
+// 見出しの高さ（2 行か 3 行か）に合わせて、画面のモックをすぐ下に置く
+const headBottom = document.querySelector(".head").getBoundingClientRect().bottom;
+document.documentElement.style.setProperty("--phoneTop", `${headBottom + vh * 0.035}px`);
+</script>
+</body>
+</html>

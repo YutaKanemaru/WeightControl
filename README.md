@@ -32,7 +32,7 @@
 
 データはすべて端末内（SwiftData）に保存し、外部のサーバーには送りません。
 
-開発の順番は [docs/ROADMAP.md](docs/ROADMAP.md)、目標体重と BMI の考え方は [docs/BMI_GOAL.md](docs/BMI_GOAL.md) を参照してください。
+開発の順番は [docs/ROADMAP.md](docs/ROADMAP.md)、目標体重と BMI の考え方は [docs/BMI_GOAL.md](docs/BMI_GOAL.md)、App Store に載せる文章と画像は [docs/APP_STORE.md](docs/APP_STORE.md) を参照してください。
 
 ## 開発環境
 
