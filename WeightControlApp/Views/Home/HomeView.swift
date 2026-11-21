@@ -59,6 +59,9 @@ struct HomeView: View {
                         if case .tooAggressive(let correction)? = dashboard.safety {
                             GoalCorrectionCard(correction: correction, goal: goal, currentWeightKg: entries.first?.weightKg)
                         }
+                        if let goalBMI = dashboard.goalBMI, goalBMI.needsHomeAttention {
+                            GoalBMICard(advice: goalBMI, goal: goal, currentWeightKg: entries.first?.weightKg)
+                        }
                     } else {
                         GoalPromptCard(currentWeightKg: entries.first?.weightKg)
                     }

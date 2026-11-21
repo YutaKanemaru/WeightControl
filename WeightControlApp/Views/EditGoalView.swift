@@ -9,6 +9,8 @@ struct EditGoalView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
     @Query(sort: \WeightEntry.date, order: .reverse) private var entries: [WeightEntry]
+    /// 身長を BMI の目安に使うため
+    @Query private var profiles: [UserProfile]
 
     /// 編集する目標。nil のときは新しく作る。
     let goal: WeightGoal?
@@ -34,7 +36,8 @@ struct EditGoalView: View {
                 draft: $draft,
                 currentWeightKg: paceReferenceWeightKg,
                 targetWeightErrorMessage: targetWeightErrorMessage,
-                deadlineErrorMessage: deadlineErrorMessage
+                deadlineErrorMessage: deadlineErrorMessage,
+                heightCm: profiles.first?.heightCm
             )
 
             if goal != nil {

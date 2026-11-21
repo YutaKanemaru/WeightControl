@@ -209,4 +209,25 @@ struct HomeDashboardBuilderTests {
         #expect(HomeDashboardBuilder.goalProgress(startKg: 70, currentKg: 71, targetKg: 65) == 0)
         #expect(HomeDashboardBuilder.goalProgress(startKg: 70, currentKg: 70, targetKg: 70) == nil)
     }
+
+    // MARK: - BMI
+
+    @Test("目標とプロフィールがあれば、目標体重の BMI の目安を出す")
+    func goalBMI() throws {
+        let records = points(days: 5) { _ in 60 }
+        // 170 cm で 50 kg は BMI 17.3。BMI 18.5 の体重は 53.5 kg
+        let lowGoal = DashboardGoal(targetWeightKg: 50, deadline: day(200), startWeightKg: 60)
+        let low = try #require(build(records, profile: profile, goal: lowGoal, now: day(4)).goalBMI)
+        #expect(low.verdict == .belowNormal(suggestedWeightKg: 53.5))
+        #expect(low.needsHomeAttention)
+
+        let normalGoal = DashboardGoal(targetWeightKg: 58, deadline: day(200), startWeightKg: 60)
+        let normal = try #require(build(records, profile: profile, goal: normalGoal, now: day(4)).goalBMI)
+        #expect(normal.verdict == .normal)
+        #expect(normal.needsHomeAttention == false)
+
+        // プロフィールか目標がなければ出さない
+        #expect(build(records, goal: lowGoal, now: day(4)).goalBMI == nil)
+        #expect(build(records, profile: profile, now: day(4)).goalBMI == nil)
+    }
 }

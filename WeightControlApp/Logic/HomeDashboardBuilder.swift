@@ -53,11 +53,14 @@ nonisolated struct HomeDashboard: Equatable, Sendable {
     var overPlanKcalPerDay: Double?
     /// `overPlanKcalPerDay` を身近な食べ物に言いかえたもの（例: りんご 1 個分）。出さないときは nil。
     var calorieHint: CalorieHint?
+    /// 目標体重の BMI の目安（docs/BMI_GOAL.md）。目標かプロフィールがなければ nil。
+    /// ホームでは `needsHomeAttention` のときだけ「目標を見直してみませんか」のカードを出します。
+    var goalBMI: GoalBMIAdvice? = nil
 }
 
 /// ホーム画面のための「とりまとめ役」。
 ///
-/// 新しい計算はせず、すでにある Logic（トレンド・予測・安全チェック・カロリー・メッセージ・食べ物ヒント）を
+/// 新しい計算はせず、すでにある Logic（トレンド・予測・安全チェック・カロリー・メッセージ・食べ物ヒント・BMI）を
 /// 決まった順番で呼び出して、結果を 1 つの値（`HomeDashboard`）にまとめます。
 /// こうしておくと、画面（View）に計算が入り込まず、組み合わせ方もテストで確かめられます。
 nonisolated enum HomeDashboardBuilder {
@@ -185,6 +188,16 @@ nonisolated enum HomeDashboardBuilder {
             }
         }
 
+        // 目標体重の BMI の目安（いまの体重は、ペースの判定と同じ目安を使う）
+        var goalBMI: GoalBMIAdvice?
+        if let goal, let profile {
+            goalBMI = GoalBMIAdvisor.advice(
+                targetWeightKg: goal.targetWeightKg,
+                currentWeightKg: currentKg,
+                heightCm: profile.heightCm
+            )
+        }
+
         return HomeDashboard(
             trend: trend,
             paceLine: paceLine,
@@ -198,7 +211,8 @@ nonisolated enum HomeDashboardBuilder {
             intake: intake,
             energyChoice: energyChoice,
             overPlanKcalPerDay: overPlan,
-            calorieHint: hint
+            calorieHint: hint,
+            goalBMI: goalBMI
         )
     }
 

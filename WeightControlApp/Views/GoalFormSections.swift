@@ -15,7 +15,7 @@ struct GoalDraft {
     }
 }
 
-/// 目標の入力欄（目標体重・期限）と、入力中の目標が無理のないペースかのひとこと。
+/// 目標の入力欄（目標体重・期限）と、入力中の目標が無理のないペースかのひとこと、目標体重の BMI の目安。
 /// 初回設定・設定画面・ホームの修正案から開く画面で使う部品です。
 ///
 /// ペースの判定は Logic の `GoalPlanAdvisor`（中身は `GoalSafetyChecker`）に任せ、
@@ -26,6 +26,8 @@ struct GoalFormSections: View {
     let currentWeightKg: Double?
     let targetWeightErrorMessage: String?
     let deadlineErrorMessage: String?
+    /// 身長（cm）。BMI の目安を出すのに使う。分からなければ nil（BMI の欄を出さない）。
+    var heightCm: Double? = nil
 
     /// 期限として選べるいちばん早い日（明日）
     private var tomorrow: Date {
@@ -67,6 +69,20 @@ struct GoalFormSections: View {
         }
 
         paceSection
+
+        if let bmiAdvice {
+            GoalBMISection(advice: bmiAdvice, draft: $draft)
+        }
+    }
+
+    // MARK: - BMI の目安
+
+    private var bmiAdvice: GoalBMIAdvice? {
+        GoalBMIAdvisor.advice(
+            targetWeightKg: try? WeightInputParser.parse(draft.targetWeightText).get(),
+            currentWeightKg: currentWeightKg,
+            heightCm: heightCm
+        )
     }
 
     // MARK: - ペースのひとこと
@@ -172,7 +188,7 @@ extension ProfileInputValidator.DeadlineError {
     @Previewable @State var draft = GoalDraft()
     NavigationStack {
         Form {
-            GoalFormSections(draft: $draft, currentWeightKg: 64.5, targetWeightErrorMessage: nil, deadlineErrorMessage: nil)
+            GoalFormSections(draft: $draft, currentWeightKg: 64.5, targetWeightErrorMessage: nil, deadlineErrorMessage: nil, heightCm: 160)
         }
     }
     .onAppear { draft.targetWeightText = "62.0" }
@@ -182,7 +198,7 @@ extension ProfileInputValidator.DeadlineError {
     @Previewable @State var draft = GoalDraft()
     NavigationStack {
         Form {
-            GoalFormSections(draft: $draft, currentWeightKg: 64.5, targetWeightErrorMessage: nil, deadlineErrorMessage: nil)
+            GoalFormSections(draft: $draft, currentWeightKg: 64.5, targetWeightErrorMessage: nil, deadlineErrorMessage: nil, heightCm: 160)
         }
     }
     .onAppear { draft.targetWeightText = "50.0" }

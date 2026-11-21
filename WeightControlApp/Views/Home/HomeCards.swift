@@ -337,6 +337,46 @@ struct GoalCorrectionCard: View {
     }
 }
 
+// MARK: - 目標体重の BMI
+
+/// 保存してある目標体重の BMI が、低め（18.5 未満）か、高め（25 以上）へ増やす目標のときだけ出すカード。
+/// この機能を入れる前に決めた目標にも気づけるようにするためです（docs/BMI_GOAL.md）。
+struct GoalBMICard: View {
+    let advice: GoalBMIAdvice
+    let goal: WeightGoal
+    let currentWeightKg: Double?
+
+    var body: some View {
+        DashboardCard(title: "目標体重を見直してみませんか", systemImage: "figure.stand", tint: .orange) {
+            MetricView("目標の BMI", value: advice.goalBMI, caption: Text(advice.goalBand.label), size: .medium, tint: .orange)
+
+            Text(message)
+                .font(.callout)
+                .fixedSize(horizontal: false, vertical: true)
+
+            NavigationLink("目標を見直す") {
+                EditGoalView(goal: goal, currentWeightKg: currentWeightKg)
+            }
+            .font(.callout)
+
+            Text("BMI は大人向けの目安です。医療的な判断ではありません。")
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+        }
+    }
+
+    private var message: Text {
+        switch advice.verdict {
+        case .belowNormal(let suggestedKg):
+            Text("やせすぎは体の負担になることがあります。\(suggestedKg, format: kgFormat) kg（BMI 18.5）以上を目安にしてみませんか。")
+        case .aboveNormal(let maximumKg, _):
+            Text("増やしすぎに気をつけて、\(maximumKg, format: kgFormat) kg（BMI 25 未満）までを目安にしてみませんか。")
+        case .normal, .gainingTowardNormal, .firstStep:
+            Text("ふつうの範囲（BMI 18.5〜25 未満）は \(advice.normalRangeKg.lowerBound, format: kgFormat)〜\(advice.normalRangeKg.upperBound, format: kgFormat) kg です。")
+        }
+    }
+}
+
 // MARK: - 食べ物ヒント
 
 struct FoodHintCard: View {
