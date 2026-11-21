@@ -38,28 +38,34 @@ struct ProfileFormSections: View {
                 TextField("身長", text: $draft.heightText, prompt: Text(verbatim: "170"))
                     .keyboardType(.decimalPad)
                     .font(.title3.monospacedDigit())
+                    // VoiceOver では単位まで読み上げる（画面の「cm」は飾りとして読ませない）
+                    .accessibilityLabel(Text("身長（センチメートル）"))
                 Text(verbatim: "cm")
                     .foregroundStyle(.secondary)
+                    .accessibilityHidden(true)
             }
         } header: {
             Text("身長")
         } footer: {
             if let heightErrorMessage {
-                Text(heightErrorMessage)
-                    .foregroundStyle(.red)
+                FieldErrorText(heightErrorMessage)
             }
         }
 
         Section {
-            Picker("生まれた年", selection: $draft.birthYear) {
+            Picker(selection: $draft.birthYear) {
                 ForEach(selectableBirthYears, id: \.self) { year in
                     Text(verbatim: "\(year)").tag(year)
                 }
+            } label: {
+                Label("生まれた年", systemImage: "calendar")
             }
-            Picker("性別", selection: $draft.sex) {
+            Picker(selection: $draft.sex) {
                 ForEach(UserProfile.Sex.allCases) { sex in
                     Text(sex.title).tag(sex)
                 }
+            } label: {
+                Label("性別", systemImage: "person")
             }
         } header: {
             Text("あなたについて")
@@ -69,7 +75,7 @@ struct ProfileFormSections: View {
         }
 
         Section {
-            Picker("活動量", selection: $draft.activityLevel) {
+            Picker(selection: $draft.activityLevel) {
                 ForEach(UserProfile.ActivityLevel.allCases) { level in
                     VStack(alignment: .leading, spacing: 2) {
                         Text(level.title)
@@ -79,6 +85,8 @@ struct ProfileFormSections: View {
                     }
                     .tag(level)
                 }
+            } label: {
+                Label("活動量", systemImage: "figure.walk")
             }
             // 選択肢を別の画面に一覧で出す（説明文まで読めるように）
             .pickerStyle(.navigationLink)
@@ -144,4 +152,15 @@ extension ProfileInputValidator.HeightError {
             ProfileFormSections(draft: $draft, heightErrorMessage: nil)
         }
     }
+}
+
+#Preview("エラー・大きい文字・ダークモード") {
+    @Previewable @State var draft = ProfileDraft()
+    NavigationStack {
+        Form {
+            ProfileFormSections(draft: $draft, heightErrorMessage: "100〜250 cm の範囲で入力してください。")
+        }
+    }
+    .dynamicTypeSize(.accessibility2)
+    .preferredColorScheme(.dark)
 }

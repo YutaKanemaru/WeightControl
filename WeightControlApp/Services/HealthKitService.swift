@@ -8,7 +8,8 @@ import HealthKit
 /// こうしておくと、重複チェックなどのルール（`Logic/Health/`）を HealthKit なしでテストできます。
 ///
 /// 使うデータの種類：
-/// - 読み取り：体重、エクササイズ時間、アクティブエネルギー、歩数、ワークアウト
+/// - 読み取り：体重、エクササイズ時間、アクティブエネルギー、歩数、ワークアウト、
+///   身長・生年月日・性別（初回設定の入力欄に引き継ぐため）
 /// - 書き込み：体重（設定でオンにしたときだけ）
 final class HealthKitService {
     /// ヘルスケアのデータベースへの接続。アプリで 1 つあれば十分です。
@@ -16,6 +17,7 @@ final class HealthKitService {
 
     private let bodyMassType = HKQuantityType(.bodyMass)
     private let kilogram = HKUnit.gramUnit(with: .kilo)
+    private let heightType = HKQuantityType(.height)
 
     /// この端末でヘルスケアが使えるか（iPhone は使える。一部の iPad などは使えない）
     static var isHealthDataAvailable: Bool {
@@ -35,6 +37,9 @@ final class HealthKitService {
             HKQuantityType(.activeEnergyBurned),
             HKQuantityType(.stepCount),
             HKObjectType.workoutType(),
+            heightType,
+            HKCharacteristicType(.dateOfBirth),
+            HKCharacteristicType(.biologicalSex),
         ]
         try await store.requestAuthorization(toShare: [bodyMassType], read: readTypes)
     }
@@ -86,6 +91,38 @@ final class HealthKitService {
             deletedIDs: Set(result.deletedObjects.map(\.uuid)),
             newAnchorData: newAnchorData
         )
+    }
+
+    // MARK: - プロフィール（初回設定用）
+
+    /// ヘルスケアに登録されている身長・生まれた年・性別を読み取ります。
+    /// 読めなかった項目（未登録・許可されていない）は nil にします。
+    func fetchProfileHints(calendar: Calendar) async -> HealthProfileHints {
+        var hints = HealthProfileHints()
+
+        // 身長：いちばん新しい記録を 1 件だけ
+        let descriptor = HKSampleQueryDescriptor(
+            predicates: [.quantitySample(type: heightType)],
+            sortDescriptors: [SortDescriptor(\.endDate, order: .reverse)],
+            limit: 1
+        )
+        if let latest = try? await descriptor.result(for: store).first {
+            hints.heightCm = latest.quantity.doubleValue(for: .meterUnit(with: .centi))
+        }
+
+        // 生年月日と性別は「特性」（変わらない情報）として、問い合わせなしで読めます
+        if let components = try? store.dateOfBirthComponents(),
+           let date = calendar.date(from: components) {
+            hints.birthYear = calendar.component(.year, from: date)
+        }
+        if let sex = try? store.biologicalSex().biologicalSex {
+            switch sex {
+            case .male: hints.sex = .male
+            case .female: hints.sex = .female
+            default: hints.sex = nil
+            }
+        }
+        return hints
     }
 
     // MARK: - 体重の書き込み・削除

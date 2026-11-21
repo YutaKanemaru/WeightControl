@@ -21,6 +21,11 @@ struct EditProfileView: View {
     var body: some View {
         Form {
             ProfileFormSections(draft: $draft, heightErrorMessage: heightErrorMessage)
+
+            Section {
+            } footer: {
+                NoticeLabel("入力した情報は、この iPhone の中だけに保存します。")
+            }
         }
         .navigationTitle("プロフィール")
         .navigationBarTitleDisplayMode(.inline)
@@ -53,4 +58,14 @@ struct EditProfileView: View {
         EditProfileView(profile: profile)
     }
     .modelContainer(.preview())
+}
+
+#Preview("大きい文字・ダークモード") {
+    let profile = UserProfile(heightCm: 170, birthYear: 1990, sex: .male, activityLevel: .light)
+    NavigationStack {
+        EditProfileView(profile: profile)
+    }
+    .modelContainer(.preview())
+    .dynamicTypeSize(.accessibility2)
+    .preferredColorScheme(.dark)
 }

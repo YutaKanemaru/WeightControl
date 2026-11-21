@@ -8,10 +8,19 @@ struct EnergyModePicker: View {
     @Bindable var profile: UserProfile
 
     var body: some View {
-        Picker("消費カロリーの計算", selection: $profile.energyMode) {
+        Picker(selection: $profile.energyMode) {
             ForEach(EnergyExpenditureMode.allCases, id: \.self) { mode in
-                Text(mode.title).tag(mode)
+                // 選ぶ画面では、名前の下に説明も出す（違いが分かるように）
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(mode.title)
+                    Text(mode.detail)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                .tag(mode)
             }
+        } label: {
+            Label("消費カロリーの計算", systemImage: "flame")
         }
         .pickerStyle(.navigationLink)
     }

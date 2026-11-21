@@ -44,7 +44,7 @@
         "DEVELOPMENT_TEAM": "7SZK8D8C75",
         "ENABLE_PREVIEWS": "YES",
         "GENERATE_INFOPLIST_FILE": "YES",
-        "INFOPLIST_KEY_NSHealthShareUsageDescription": "ヘルスケアの体重を記録に取り込み、歩数・エクササイズ・ワークアウトから運動した日をカレンダーに表示するために使います。データは端末の中だけで使います。",
+        "INFOPLIST_KEY_NSHealthShareUsageDescription": "ヘルスケアの体重を記録に取り込み、歩数・エクササイズ・ワークアウトから運動した日をカレンダーに表示するために使います。身長・生年月日・性別は、初回設定の入力の手間を減らすために使います。データは端末の中だけで使います。",
         "INFOPLIST_KEY_NSHealthUpdateUsageDescription": "このアプリで記録した体重を、ヘルスケアにも保存するために使います。",
         "INFOPLIST_KEY_UIApplicationSceneManifest_Generation": "YES",
         "INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents": "YES",
