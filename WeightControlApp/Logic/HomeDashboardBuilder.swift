@@ -56,11 +56,18 @@ nonisolated struct HomeDashboard: Equatable, Sendable {
     /// 目標体重の BMI の目安（docs/BMI_GOAL.md）。目標かプロフィールがなければ nil。
     /// ホームでは `needsHomeAttention` のときだけ「目標を見直してみませんか」のカードを出します。
     var goalBMI: GoalBMIAdvice? = nil
+    /// 摂取カロリーの下限（kcal。基礎代謝と、男性 1500・女性 1200 kcal の大きいほう）。プロフィールか記録がなければ nil。
+    /// チートデー計画（Pro）で、ふだんの日もこれを下回らないようにするのに使います。
+    var minimumIntakeKcal: Double? = nil
+    /// Pro：幅付きの達成予測。Pro を使えないとき・目標がないときは nil。
+    var forecastRange: ForecastRangeResult? = nil
+    /// Pro：グラフの「予測の幅」の帯。Pro を使えないとき・幅付きで予測できないときは空。
+    var forecastBand: [ForecastBandPoint] = []
 }
 
 /// ホーム画面のための「とりまとめ役」。
 ///
-/// 新しい計算はせず、すでにある Logic（トレンド・予測・安全チェック・カロリー・メッセージ・食べ物ヒント・BMI）を
+/// 新しい計算はせず、すでにある Logic（トレンド・予測・安全チェック・カロリー・メッセージ・食べ物ヒント・BMI・Pro の幅付き予測）を
 /// 決まった順番で呼び出して、結果を 1 つの値（`HomeDashboard`）にまとめます。
 /// こうしておくと、画面（View）に計算が入り込まず、組み合わせ方もテストで確かめられます。
 nonisolated enum HomeDashboardBuilder {
@@ -71,12 +78,16 @@ nonisolated enum HomeDashboardBuilder {
     /// これより小さい差なら「目標＝キープ」とみなす（kg）
     static let maintainToleranceKg = 0.1
 
+    /// - Parameter includesPro: Pro 機能（幅付きの予測と、グラフの帯）も計算するか。
+    ///   `false` のときは無料版の結果だけで、`forecastRange` は nil・`forecastBand` は空になります。
+    ///   Pro を使っても、無料版の結果（予測・点線など）は何も変わりません。
     static func build(
         points: [WeightPoint],
         profile: DashboardProfile?,
         goal: DashboardGoal?,
         foods: [FoodItem],
         healthActivity: ActivitySummary? = nil,
+        includesPro: Bool = false,
         now: Date,
         calendar: Calendar = .current
     ) -> HomeDashboard {
@@ -144,6 +155,7 @@ nonisolated enum HomeDashboardBuilder {
         // 1 日の摂取カロリーの目安
         var intake: IntakeRecommendation?
         var energyChoice: EnergyExpenditureChoice?
+        var minimumIntake: Double?
         if let profile, let currentKg {
             let bmr = CalorieCalculator.basalMetabolicRate(
                 weightKg: currentKg,
@@ -158,6 +170,7 @@ nonisolated enum HomeDashboardBuilder {
                 healthActivity: healthActivity
             )
             energyChoice = choice
+            minimumIntake = CalorieCalculator.minimumIntakeKcal(bmrKcal: bmr, sex: profile.sex)
             let tdee = EnergyExpenditureResolver.totalDailyEnergyExpenditure(bmrKcal: bmr, source: choice.source)
             intake = CalorieCalculator.recommendedIntake(
                 tdeeKcal: tdee,
@@ -198,6 +211,28 @@ nonisolated enum HomeDashboardBuilder {
             )
         }
 
+        // Pro：幅付きの予測と、グラフの帯（まん中の見込みは上の予測と同じ）
+        var forecastRange: ForecastRangeResult?
+        var forecastBand: [ForecastBandPoint] = []
+        if includesPro, let goal {
+            let range = ForecastRangeEstimator.estimate(
+                points: points,
+                goalWeightKg: goal.targetWeightKg,
+                deadline: goal.deadline,
+                now: now,
+                calendar: calendar
+            )
+            forecastRange = range
+            if case .available(let value) = range, case .available(let central)? = forecast {
+                forecastBand = ForecastBandBuilder.band(
+                    for: value,
+                    startKg: central.currentWeightKg,
+                    goalWeightKg: goal.targetWeightKg,
+                    calendar: calendar
+                )
+            }
+        }
+
         return HomeDashboard(
             trend: trend,
             paceLine: paceLine,
@@ -212,7 +247,10 @@ nonisolated enum HomeDashboardBuilder {
             energyChoice: energyChoice,
             overPlanKcalPerDay: overPlan,
             calorieHint: hint,
-            goalBMI: goalBMI
+            goalBMI: goalBMI,
+            minimumIntakeKcal: minimumIntake,
+            forecastRange: forecastRange,
+            forecastBand: forecastBand
         )
     }
 

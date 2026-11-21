@@ -6,6 +6,7 @@ import Charts
 /// - 点：実際に測った体重（1 日 1 点。同じ日に何回か測ったら平均）
 /// - 実線：直近 3 週間の測った体重に引いた直線（線形回帰）。いまのペースを表す
 /// - 点線：その直線をのばした予測（目標に届く日まで）
+/// - 薄い帯（Pro）：早めの見込み〜遅めの見込みの幅。日々のブレが大きいほど広くなります
 /// - 横線（緑）：目標体重
 /// - 縦線：目標の期限。点線が縦線より左で横線に届けば「期限に間に合う」と、ひと目で分かります
 ///
@@ -23,6 +24,8 @@ struct WeightChartView: View {
     let goalWeightKg: Double?
     /// 目標の期限
     let deadline: Date?
+    /// Pro：予測の幅（薄い帯）。Pro を使えないときは空
+    var forecastBand: [ForecastBandPoint] = []
 
     /// グラフに出す過去の日数（古すぎる記録まで出すと、最近の動きが見えにくくなるため）
     private let visibleHistoryDays = 90
@@ -42,6 +45,7 @@ struct WeightChartView: View {
     /// 縦軸の範囲。すべての点と目標体重が入るように、上下に少し余白をつける。
     private var yDomain: ClosedRange<Double> {
         var values = visibleMeasured.map(\.weightKg) + paceLine.map(\.weightKg) + forecastLine.map(\.weightKg)
+            + forecastBand.flatMap { [$0.lowerKg, $0.upperKg] }
         if let goalWeightKg { values.append(goalWeightKg) }
         guard let low = values.min(), let high = values.max() else { return 0...1 }
         let padding = max(0.5, (high - low) * 0.1)
@@ -51,6 +55,16 @@ struct WeightChartView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             Chart {
+                // 予測の幅（Pro）。いちばん先に描いて、ほかの線や点の後ろに置く
+                ForEach(forecastBand, id: \.date) { point in
+                    AreaMark(
+                        x: .value("日付", point.date, unit: .day),
+                        yStart: .value("早めの見込み", point.lowerKg),
+                        yEnd: .value("遅めの見込み", point.upperKg)
+                    )
+                    .foregroundStyle(Color.accentColor.opacity(0.15))
+                }
+
                 if let goalWeightKg {
                     RuleMark(y: .value("目標", goalWeightKg))
                         .foregroundStyle(.green)
@@ -153,6 +167,12 @@ struct WeightChartView: View {
             legendItem("予測") {
                 DashLine().stroke(Color.accentColor.opacity(0.7), style: StrokeStyle(lineWidth: 2, dash: [4, 3]))
                     .frame(width: 16, height: 3)
+            }
+        }
+        if !forecastBand.isEmpty {
+            legendItem("予測の幅") {
+                RoundedRectangle(cornerRadius: 2).fill(Color.accentColor.opacity(0.25))
+                    .frame(width: 16, height: 9)
             }
         }
     }

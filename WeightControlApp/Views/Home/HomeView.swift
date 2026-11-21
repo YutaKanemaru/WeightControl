@@ -17,6 +17,8 @@ struct HomeView: View {
 
     /// ヘルスケア連携の係。連携していて運動データがあれば、消費カロリーの計算に実績を使う。
     @Environment(HealthSyncController.self) private var health: HealthSyncController?
+    /// Pro を使えるか（使えるときだけ、見込みの幅とごほうびの日のカードを出す）
+    @Environment(ProAccess.self) private var pro: ProAccess?
 
     @State private var isShowingAddSheet = false
 
@@ -31,6 +33,7 @@ struct HomeView: View {
             goal: goal?.dashboardGoal,
             foods: Self.foods,
             healthActivity: health?.activitySummary,
+            includesPro: isProUnlocked,
             now: .now
         )
 
@@ -56,6 +59,9 @@ struct HomeView: View {
                         if !entries.isEmpty, let forecast = dashboard.forecast {
                             ForecastCard(forecast: forecast)
                         }
+                        if case .available(let range)? = dashboard.forecastRange {
+                            ForecastRangeCard(range: range)
+                        }
                         if case .tooAggressive(let correction)? = dashboard.safety {
                             GoalCorrectionCard(correction: correction, goal: goal, currentWeightKg: entries.first?.weightKg)
                         }
@@ -68,6 +74,9 @@ struct HomeView: View {
 
                     if let intake = dashboard.intake {
                         IntakeCard(intake: intake, energyChoice: dashboard.energyChoice)
+                        if isProUnlocked {
+                            CheatDayLinkCard()
+                        }
                     }
 
                     if let phrase = dashboard.calorieHint?.foodPhrase, let overPlan = dashboard.overPlanKcalPerDay {
@@ -96,6 +105,8 @@ struct HomeView: View {
             }
         }
     }
+
+    private var isProUnlocked: Bool { pro?.isUnlocked ?? false }
 
     /// 目標までの残り（kg）。目標や記録がなければ nil。
     ///
@@ -141,6 +152,12 @@ private func homePreviewContainer(
 #Preview("順調") {
     HomeView()
         .modelContainer(homePreviewContainer())
+}
+
+#Preview("Pro（見込みの幅・ごほうびの日）") {
+    HomeView()
+        .modelContainer(homePreviewContainer())
+        .environment(ProAccess.previewUnlocked())
 }
 
 #Preview("順調・ダークモード") {

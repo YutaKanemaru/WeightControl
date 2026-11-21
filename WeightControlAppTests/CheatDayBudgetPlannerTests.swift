@@ -14,7 +14,8 @@ struct CheatDayBudgetPlannerTests {
         target: Double = 2000,
         minimum: Double = 1500,
         cheatDays: [Int] = [5],
-        desiredExtra: Double? = nil
+        desiredExtra: Double? = nil,
+        maintenance: Double? = nil
     ) -> CheatDayPlanResult {
         CheatDayBudgetPlanner.plan(
             dailyTargetKcal: target,
@@ -22,6 +23,7 @@ struct CheatDayBudgetPlannerTests {
             startDate: day(0),
             cheatDates: cheatDays.map { day($0) },
             desiredCheatDayExtraKcal: desiredExtra,
+            maintenanceKcal: maintenance,
             calendar: calendar
         )
     }
@@ -121,6 +123,60 @@ struct CheatDayBudgetPlannerTests {
         #expect(result.dailySavingKcal == 0)
         #expect(result.cheatDayKcal == 2000)
         #expect(result.isLimited == false)
+    }
+
+    // MARK: - チートデーは維持カロリーまで
+
+    @Test("チートデーは維持カロリーまで（研究の例：目安 1800・維持 2300・2 日）")
+    func cheatDayCappedAtMaintenance() throws {
+        // 5 日 × 300 = 1500 を 2 日で分けると 2550 kcal になり、維持カロリー 2300 を超える。
+        // そこで貯める量を (2300 − 1800) × 2 ÷ 5 = 200 kcal/日 に抑える → チートデーは 2300 kcal ちょうど
+        let result = try available(plan(target: 1800, minimum: 1500, cheatDays: [2, 5], maintenance: 2300))
+        #expect(isApproximately(result.dailySavingKcal, 200))
+        #expect(isApproximately(result.regularDayKcal, 1600))
+        #expect(isApproximately(result.cheatDayKcal, 2300))
+        #expect(result.isLimited)
+        #expect(result.limit == .maintenance)
+        #expect(isApproximately(result.days.reduce(0) { $0 + $1.intakeKcal }, result.weeklyBudgetKcal, tolerance: 1e-6))
+    }
+
+    @Test("チートデー 1 日でも、維持カロリーを超えない")
+    func singleCheatDayCappedAtMaintenance() throws {
+        // 上限なしなら 3800 kcal。維持 3000 なので、貯める量は 1000 ÷ 6 ≈ 166.7 kcal/日
+        let result = try available(plan(target: 2000, minimum: 1500, cheatDays: [5], maintenance: 3000))
+        #expect(isApproximately(result.dailySavingKcal, 1000.0 / 6))
+        #expect(isApproximately(result.cheatDayKcal, 3000))
+        #expect(result.limit == .maintenance)
+    }
+
+    @Test("維持カロリーに余裕があれば、ほかの上限のまま")
+    func maintenanceNotReached() throws {
+        // 2 日で分けると 2750 kcal。維持 2800 より少ないので、上限には当たらない
+        let result = try available(plan(cheatDays: [2, 5], maintenance: 2800))
+        #expect(result.cheatDayKcal == 2750)
+        #expect(result.isLimited == false)
+        #expect(result.limit == nil)
+    }
+
+    @Test("目安が維持カロリー以上（増量・キープ）なら、チートデーの上乗せはない")
+    func noRoomWhenTargetAtMaintenance() throws {
+        let result = try available(plan(target: 2300, minimum: 1500, maintenance: 2300))
+        #expect(result.dailySavingKcal == 0)
+        #expect(result.cheatDayKcal == 2300)
+        #expect(result.limit == .maintenance)
+    }
+
+    @Test("下限のほうが先に効くときは、理由は「下限」")
+    func minimumIntakeIsTheLimit() throws {
+        let result = try available(plan(target: 1600, minimum: 1500, desiredExtra: 1200, maintenance: 3000))
+        #expect(result.dailySavingKcal == 100)
+        #expect(result.limit == .minimumIntake)
+    }
+
+    @Test("1 日 300 kcal の上限が効くときは、理由は「1 日の上限」")
+    func dailySavingIsTheLimit() throws {
+        let result = try available(plan(target: 2500, minimum: 1500, desiredExtra: 3000))
+        #expect(result.limit == .dailySaving)
     }
 
     // MARK: - 日付

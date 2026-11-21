@@ -1,7 +1,7 @@
 import SwiftUI
 import SwiftData
 
-/// 「設定」タブの画面：目標・プロフィール・消費カロリーの計算・通知・ヘルスケア連携・ご利用にあたって。
+/// 「設定」タブの画面：目標・プロフィール・消費カロリーの計算・通知・ヘルスケア連携・Pro・ご利用にあたって。
 ///
 /// iPhone の「設定」アプリと同じ標準の `List`（ひとまとまりごとの Section）を使い、
 /// いちばん大事な「目標」だけは数字を大きく見せています。
@@ -22,6 +22,7 @@ struct SettingsView: View {
                 energySection
                 ReminderSettingsSection()
                 healthSection
+                ProSettingsSection()
                 aboutSection
 
                 #if DEBUG
