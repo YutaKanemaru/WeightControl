@@ -174,7 +174,7 @@ struct GoalFormSections: View {
     private func modeRow(_ mode: GoalPaceMode) -> some View {
         VStack(alignment: .leading, spacing: 2) {
             Text(mode.title)
-            Text(modeDetail(mode))
+            modeDetail(mode)
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }
