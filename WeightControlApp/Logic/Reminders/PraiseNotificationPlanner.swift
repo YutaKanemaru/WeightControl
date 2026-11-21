@@ -9,7 +9,7 @@ nonisolated struct PlannedPraiseNotification: Equatable, Sendable {
         case weeklyRecap(recordedDays: Int, milestone: PraiseMilestone?)
         /// 節目に届いたお祝い
         case milestone(PraiseMilestone)
-        /// リバウンド抑制モード（Pro）：範囲から出た・範囲に戻った
+        /// キープモード（Pro）：範囲から出た・範囲に戻った
         case maintenance(MaintenanceAdvisor.Crossing)
     }
 
@@ -37,7 +37,7 @@ nonisolated struct PraiseMilestone: Equatable, Sendable {
 /// 2. **節目のお祝い**：連続記録（7 日連続など）や、目標までの道のりの 25/50/75/100% に届いた日の夜に 1 通。
 ///    節目に届いた記録が夜 20:00 より後なら、次の日の夜に出します。
 ///    日曜（ふり返りの日）に節目に届いたときは、ふり返りの 1 通にまとめます。
-/// 3. **リバウンド抑制モード（Pro）**：範囲から出た日・範囲に戻った日の夜に 1 通ずつ（docs/MAINTENANCE_MODE.md）。
+/// 3. **キープモード（Pro）**：範囲から出た日・範囲に戻った日の夜に 1 通ずつ（docs/MAINTENANCE_MODE.md）。
 ///    モード中は目標の節目（25/50/75/100%）は出さず、ふり返りに「範囲の中でキープできました」をそえます。
 ///    Pro を使えないときは、呼ぶ側が目標からモードの情報を外して渡します（`WeightGoal.dashboardGoal(includesMaintenance:)`）。
 ///
@@ -69,7 +69,7 @@ nonisolated enum PraiseNotificationPlanner {
     /// - Parameters:
     ///   - points: 体重の記録（順番はバラバラで OK）
     ///   - goal: いまの目標。なければ nil（目標の節目は出しません）
-    ///   - heightCm: 身長（リバウンド抑制モードの範囲の下の端を BMI 18.5 で止めるため。ホームと同じ範囲にする）
+    ///   - heightCm: 身長（キープモードの範囲の下の端を BMI 18.5 で止めるため。ホームと同じ範囲にする）
     ///   - now: 「今」とみなす日時。テストで日付を固定できるように引数にしています。
     ///   - calendar: 日付の区切り（タイムゾーン）と曜日を決めるカレンダー
     static func plan(
@@ -79,7 +79,7 @@ nonisolated enum PraiseNotificationPlanner {
         now: Date = .now,
         calendar: Calendar = .current
     ) -> [PlannedPraiseNotification] {
-        // リバウンド抑制モード中なら、その範囲と始めた日
+        // キープモード中なら、その範囲と始めた日
         let maintenance: (range: MaintenanceRange, startDate: Date)? = goal.flatMap { goal in
             goal.maintenanceStartDate.map { start in
                 (range: MaintenanceAdvisor.range(centerKg: goal.targetWeightKg, halfWidthKg: goal.maintenanceHalfWidthKg, heightCm: heightCm),
@@ -145,7 +145,7 @@ nonisolated enum PraiseNotificationPlanner {
     }
 
     /// ふり返りの文面。記録した日数に応じて、いつもほめる言い方にします。
-    /// - Parameter keptInRange: リバウンド抑制モード中で、この週の記録の日がすべて範囲の中だったか
+    /// - Parameter keptInRange: キープモード中で、この週の記録の日がすべて範囲の中だったか
     static func recapMessage(recordedDays: Int, milestone: PraiseMilestone?, keptInRange: Bool = false) -> (title: String, body: String) {
         let title = String(localized: "今週のふり返り")
         var sentences: [String] = []
@@ -165,7 +165,7 @@ nonisolated enum PraiseNotificationPlanner {
         return (title, sentences.joined())
     }
 
-    // MARK: - リバウンド抑制モード
+    // MARK: - キープモード
 
     /// 今日・昨日に範囲から出た・戻ったお知らせのうち、まだ出す時刻が来ていないもの。
     /// 前の記録の日と比べて切りかわった日だけなので、範囲の外にいるあいだに何度も届くことはありません。

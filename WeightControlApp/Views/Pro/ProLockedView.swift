@@ -9,7 +9,7 @@ struct ProLockedView: View {
         ContentUnavailableView {
             Label("Pro の機能です", systemImage: "lock")
         } description: {
-            Text("チートデーの提案・見込みの幅・リバウンド抑制モード（目標に届いたあと、体重を範囲の中にキープするモード）は、Pro で使える機能です。アプリの中で購入できるよう準備しています。")
+            Text("チートデーの提案・見込みの幅・キープモード（目標に届いたあと、体重を範囲の中にキープするモード）は、Pro で使える機能です。アプリの中で購入できるよう準備しています。")
         }
     }
 }

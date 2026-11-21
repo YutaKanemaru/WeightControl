@@ -60,7 +60,7 @@ struct HomeView: View {
                     }
 
                     if let goal, let maintenance = dashboard.maintenance {
-                        // リバウンド抑制モード中：達成の見込み・修正案・見込みの幅の代わりに、範囲のカード
+                        // キープモード中：達成の見込み・修正案・見込みの幅の代わりに、範囲のカード
                         MaintenanceStatusCard(result: maintenance, goal: goal, currentWeightKg: entries.first?.weightKg)
                         if let goalBMI = dashboard.goalBMI, goalBMI.needsHomeAttention {
                             GoalBMICard(advice: goalBMI, goal: goal, currentWeightKg: entries.first?.weightKg)
@@ -207,7 +207,7 @@ private func homePreviewContainer(
         .modelContainer(homePreviewContainer(goalKg: 55, deadlineMonths: 1))
 }
 
-#Preview("リバウンド抑制モード（Pro）") {
+#Preview("キープモード（Pro）") {
     let container = homePreviewContainer(goalKg: 64)
     let goal = try! container.mainContext.fetch(FetchDescriptor<WeightGoal>()).first!
     goal.maintenanceStartDate = Calendar.current.date(byAdding: .day, value: -14, to: .now)

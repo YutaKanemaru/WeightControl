@@ -250,9 +250,9 @@ struct DemoScenarioTests {
         #expect(isApproximately(aheadKg, 0.152727, tolerance: 0.001))
     }
 
-    // MARK: - ⑤ リバウンド抑制モード（Pro）
+    // MARK: - ⑤ キープモード（Pro）
 
-    @Test("⑤ リバウンド抑制モード：範囲 53.5〜56.5 kg の中だが、10 日ほどで上に出そう（そろそろ端）")
+    @Test("⑤ キープモード：範囲 53.5〜56.5 kg の中だが、10 日ほどで上に出そう（そろそろ端）")
     func maintenance() throws {
         let result = try proDashboard(.maintenance)
         let keep = try #require(result.maintenance)

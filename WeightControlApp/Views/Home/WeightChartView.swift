@@ -26,7 +26,7 @@ struct WeightChartView: View {
     let deadline: Date?
     /// Pro：予測の幅（薄い帯）。Pro を使えないときは空
     var forecastBand: [ForecastBandPoint] = []
-    /// Pro：リバウンド抑制モードのキープの範囲（薄い緑の帯）。モード中でなければ nil
+    /// Pro：キープモードのキープの範囲（薄い緑の帯）。モード中でなければ nil
     var keepRange: MaintenanceRange? = nil
 
     /// グラフに出す過去の日数（古すぎる記録まで出すと、最近の動きが見えにくくなるため）
@@ -68,7 +68,7 @@ struct WeightChartView: View {
                     .foregroundStyle(Color.accentColor.opacity(0.15))
                 }
 
-                // リバウンド抑制モードのキープの範囲。表示している期間の左端から右端まで、薄い緑の帯にする
+                // キープモードのキープの範囲。表示している期間の左端から右端まで、薄い緑の帯にする
                 if let keepRange, let first = visibleMeasured.first?.date, let last = visibleMeasured.last?.date {
                     RectangleMark(
                         xStart: .value("日付", first, unit: .day),

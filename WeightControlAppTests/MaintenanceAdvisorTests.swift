@@ -2,7 +2,7 @@ import Foundation
 import Testing
 @testable import WeightControlApp
 
-/// リバウンド抑制モード（MaintenanceAdvisor）のテスト。決まりは docs/MAINTENANCE_MODE.md。
+/// キープモード（MaintenanceAdvisor）のテスト。決まりは docs/MAINTENANCE_MODE.md。
 ///
 /// 体重のデータは「60 kg が 14 日 → 63 kg が 7 日 → 60 kg が 21 日」の形をよく使います。
 /// このとき、今の体重の目安（直近 21 日の直線の値）は 16 日目に範囲（58.5〜61.5 kg）の上に出て、

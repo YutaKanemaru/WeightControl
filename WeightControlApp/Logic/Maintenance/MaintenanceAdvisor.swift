@@ -1,6 +1,6 @@
 import Foundation
 
-/// リバウンド抑制モード（目標に届いたあとに、体重を範囲の中にキープするモード）のキープの範囲。
+/// キープモード（目標に届いたあとに、体重を範囲の中にキープするモード）のキープの範囲。
 nonisolated struct MaintenanceRange: Equatable, Sendable {
     /// 範囲の中心（kg）。ふつうは届いた目標体重。
     var centerKg: Double
@@ -45,7 +45,7 @@ nonisolated enum MaintenanceStatus: Equatable, Sendable {
     }
 }
 
-/// リバウンド抑制モードの判定結果。ホーム画面はこれを並べるだけにします。
+/// キープモードの判定結果。ホーム画面はこれを並べるだけにします。
 nonisolated struct MaintenanceResult: Equatable, Sendable {
     /// キープの範囲
     var range: MaintenanceRange
@@ -66,7 +66,7 @@ nonisolated struct MaintenanceResult: Equatable, Sendable {
     }
 }
 
-/// リバウンド抑制モードの判断のルール（docs/MAINTENANCE_MODE.md）。
+/// キープモードの判断のルール（docs/MAINTENANCE_MODE.md）。
 ///
 /// - 範囲は「中心 ± 幅」（最初は ±1.5 kg）。下の端は BMI 18.5 の体重より下げない。
 /// - 判定には 1 回ごとの体重ではなく、ホームと同じ **今の体重の目安**（直近 21 日の直線の値、
@@ -113,7 +113,7 @@ nonisolated enum MaintenanceAdvisor {
         (weightKg * 10).rounded() / 10
     }
 
-    /// 目標に届いたか（ホームで「リバウンド抑制モードを始める」案内を出すか）。
+    /// 目標に届いたか（ホームで「キープモードを始める」案内を出すか）。
     ///
     /// 今の体重の目安が目標 ±0.1 kg 以内か、目標を通りこしている（減らす目標でさらに下・増やす目標でさらに上）とき。
     /// キープが目標（スタートと目標がほぼ同じ）のときは ±0.1 kg 以内のときだけ。
@@ -155,7 +155,7 @@ nonisolated enum MaintenanceAdvisor {
 
     // MARK: - まとめて判定
 
-    /// 記録から、リバウンド抑制モードの判定をまとめて出します。記録がなければ nil。
+    /// 記録から、キープモードの判定をまとめて出します。記録がなければ nil。
     ///
     /// - Parameters:
     ///   - points: 体重の記録（順番はバラバラで OK）
@@ -299,7 +299,7 @@ nonisolated enum MaintenanceAdvisor {
 
     // MARK: - ほめるメッセージ
 
-    /// リバウンド抑制モード中の「ほめる」メッセージ。責める言い方はしません。
+    /// キープモード中の「ほめる」メッセージ。責める言い方はしません。
     static func praise(for result: MaintenanceResult) -> PraiseMessage {
         switch result.status {
         case .inRange:

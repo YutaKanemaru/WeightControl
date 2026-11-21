@@ -26,8 +26,8 @@ final class PraiseNotificationScheduler {
     ///
     /// アプリを開いたとき、記録を追加・削除したとき、目標や設定を変えたときに呼びます。
     /// - Parameters:
-    ///   - goal: 目標。Pro を使えないときは、リバウンド抑制モードの情報を外して渡してください。
-    ///   - heightCm: 身長（リバウンド抑制モードの範囲を、ホームと同じにするため）
+    ///   - goal: 目標。Pro を使えないときは、キープモードの情報を外して渡してください。
+    ///   - heightCm: 身長（キープモードの範囲を、ホームと同じにするため）
     func update(isEnabled: Bool, points: [WeightPoint], goal: DashboardGoal?, heightCm: Double? = nil) {
         let previous = latestTask
         latestTask = Task {

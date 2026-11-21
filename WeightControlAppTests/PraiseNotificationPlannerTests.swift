@@ -169,21 +169,21 @@ struct PraiseNotificationPlannerTests {
         }
     }
 
-    // MARK: - リバウンド抑制モード（Pro）
+    // MARK: - キープモード（Pro）
 
     /// 60 kg が 14 日 → 63 kg（0〜`last` 日目）。目安は 16 日目に範囲（58.5〜61.5 kg）の上に出る
     private func risingRecords(through last: Int) -> [WeightPoint] {
         (0...last).map { WeightPoint(date: date($0, hour: 7), weightKg: $0 >= 14 ? 63 : 60) }
     }
 
-    /// 中心 60 kg・±1.5 kg、基準日に始めたリバウンド抑制モード
+    /// 中心 60 kg・±1.5 kg、基準日に始めたキープモード
     private var maintenanceGoal: DashboardGoal {
         var goal = DashboardGoal(targetWeightKg: 60, deadline: date(0, hour: 0), startWeightKg: 65)
         goal.maintenanceStartDate = date(0, hour: 0)
         return goal
     }
 
-    @Test("リバウンド抑制モード：範囲から出た日の夜 20:00 に 1 回だけ知らせる")
+    @Test("キープモード：範囲から出た日の夜 20:00 に 1 回だけ知らせる")
     func maintenanceLeftRange() {
         let plans = plan(risingRecords(through: 16), goal: maintenanceGoal, now: date(16, hour: 12))
         let left = plans.filter { $0.kind == .maintenance(.left(.up)) }
@@ -196,14 +196,14 @@ struct PraiseNotificationPlannerTests {
         #expect(!nextDay.contains { if case .maintenance = $0.kind { true } else { false } })
     }
 
-    @Test("リバウンド抑制モードでないとき（Pro でない）は、範囲のお知らせを出さない")
+    @Test("キープモードでないとき（Pro でない）は、範囲のお知らせを出さない")
     func noMaintenanceNotificationWithoutMode() {
         let plans = plan(risingRecords(through: 16), goal: DashboardGoal(targetWeightKg: 60, deadline: date(0, hour: 0), startWeightKg: 65),
                          now: date(16, hour: 12))
         #expect(!plans.contains { if case .maintenance = $0.kind { true } else { false } })
     }
 
-    @Test("リバウンド抑制モード：1 週間ずっと範囲の中なら、ふり返りでほめる")
+    @Test("キープモード：1 週間ずっと範囲の中なら、ふり返りでほめる")
     func maintenanceRecapKept() throws {
         let plans = plan(records(days: 0...41, weightKg: 60), goal: maintenanceGoal, now: date(41, hour: 12))
         let recap = try #require(plans.first { if case .weeklyRecap = $0.kind { true } else { false } })

@@ -23,7 +23,7 @@ struct WeightSummaryCard: View {
     /// 目標までの残り（kg）。目標がなければ nil。
     let remainingKg: Double?
     let goalWeightKg: Double?
-    /// リバウンド抑制モード中ならキープの範囲。そのときは「目標まで」の代わりに範囲を出す。
+    /// キープモード中ならキープの範囲。そのときは「目標まで」の代わりに範囲を出す。
     var maintenanceRange: MaintenanceRange? = nil
 
     var body: some View {
@@ -133,7 +133,7 @@ struct WeightChartCard: View {
                 paceLine: dashboard.paceLine,
                 forecastLine: dashboard.forecastLine,
                 goalWeightKg: goalWeightKg,
-                // リバウンド抑制モード中は期限を使わないので、縦線も出さない
+                // キープモード中は期限を使わないので、縦線も出さない
                 deadline: dashboard.maintenance == nil ? deadline : nil,
                 forecastBand: dashboard.forecastBand,
                 keepRange: dashboard.maintenance?.range
@@ -284,7 +284,7 @@ struct IntakeCard: View {
     var energyChoice: EnergyExpenditureChoice?
     /// 今日がチートデー（Pro）か。そのときは目安を維持カロリー（消費カロリーの目安と同じ量）で出す
     var isCheatDay: Bool = false
-    /// リバウンド抑制モード中なら、その状態（見出しを「維持カロリーの目安」などに変える）
+    /// キープモード中なら、その状態（見出しを「維持カロリーの目安」などに変える）
     var maintenanceStatus: MaintenanceStatus? = nil
 
     var body: some View {
@@ -311,7 +311,7 @@ struct IntakeCard: View {
         }
     }
 
-    /// 見出し。リバウンド抑制モード中は、範囲の中なら「維持カロリー」、外なら「ゆっくり戻す」目安と伝える
+    /// 見出し。キープモード中は、範囲の中なら「維持カロリー」、外なら「ゆっくり戻す」目安と伝える
     private var title: LocalizedStringKey {
         switch maintenanceStatus {
         case nil: "1 日の摂取カロリーの目安"

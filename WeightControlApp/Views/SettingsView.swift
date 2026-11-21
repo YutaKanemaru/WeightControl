@@ -13,7 +13,7 @@ struct SettingsView: View {
     @Query(sort: \WeightEntry.date, order: .reverse) private var entries: [WeightEntry]
     /// ヘルスケア連携の係（連携のオン・オフを行の右に出すため。プレビューでは nil のことがある）
     @Environment(HealthSyncController.self) private var health: HealthSyncController?
-    /// Pro を使えるか（リバウンド抑制モードの欄を出すため）
+    /// Pro を使えるか（キープモードの欄を出すため）
     @Environment(ProAccess.self) private var pro: ProAccess?
 
     var body: some View {
@@ -57,7 +57,7 @@ struct SettingsView: View {
                             .map(MaintenanceAdvisor.roundedCenterKg)
                         goal.startMaintenance(centerKg: center)
                     } label: {
-                        Label("今の体重でリバウンド抑制モードを始める", systemImage: "shield.lefthalf.filled")
+                        Label("今の体重でキープモードを始める", systemImage: "shield.lefthalf.filled")
                     }
                     .disabled(entries.isEmpty)
                 }
@@ -82,7 +82,7 @@ struct SettingsView: View {
             Text("目標")
         } footer: {
             if isProUnlocked, let goal = goals.first, !goal.isInMaintenance {
-                Text("リバウンド抑制モード（Pro）は、今の体重を中心に ±\(MaintenanceAdvisor.defaultHalfWidthKg, format: .number.precision(.fractionLength(1))) kg の範囲でキープするモードです。目標に届くと、ホームからも始められます。")
+                Text("キープモード（Pro）は、今の体重を中心に ±\(MaintenanceAdvisor.defaultHalfWidthKg, format: .number.precision(.fractionLength(1))) kg の範囲でキープするモードです。目標に届くと、ホームからも始められます。")
             }
         }
     }

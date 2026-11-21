@@ -1,7 +1,7 @@
 import SwiftUI
 import SwiftData
 
-// リバウンド抑制モード（Pro）のホームのカードたち（docs/MAINTENANCE_MODE.md）。
+// キープモード（Pro）のホームのカードたち（docs/MAINTENANCE_MODE.md）。
 // どれも計算済みの結果（`MaintenanceResult`）を受け取って表示するだけです。
 
 /// kg を小数 1 桁で表示する書式
@@ -9,7 +9,7 @@ private let kgFormat = FloatingPointFormatStyle<Double>.number.precision(.fracti
 
 // MARK: - モード中：範囲の中にいるか
 
-/// 「達成の見込み」のカードの代わりに出す、リバウンド抑制モードのカード。
+/// 「達成の見込み」のカードの代わりに出す、キープモードのカード。
 /// 状態（範囲の中・そろそろ端・少し上・少し下）、範囲の中の日数、範囲のどのあたりにいるかのバーを出します。
 struct MaintenanceStatusCard: View {
     let result: MaintenanceResult
@@ -18,7 +18,7 @@ struct MaintenanceStatusCard: View {
     let currentWeightKg: Double?
 
     var body: some View {
-        DashboardCard(title: "リバウンド抑制モード", systemImage: "shield.lefthalf.filled", tint: tint) {
+        DashboardCard(title: "キープモード", systemImage: "shield.lefthalf.filled", tint: tint) {
             MetricView(text: Text(headline), caption: caption, tint: tint)
 
             MaintenanceRangeBar(range: result.range, currentKg: result.currentWeightKg, tint: tint)
@@ -140,7 +140,7 @@ struct MaintenanceRangeBar: View {
 // MARK: - 目標に届いたとき
 
 /// 目標に届いたときに出すカード。
-/// Pro を使えるなら「リバウンド抑制モードを始める」ボタン、使えないなら Pro の案内を出します。
+/// Pro を使えるなら「キープモードを始める」ボタン、使えないなら Pro の案内を出します。
 struct GoalAchievedCard: View {
     let goal: WeightGoal
     /// Pro を使えるか
@@ -156,7 +156,7 @@ struct GoalAchievedCard: View {
                 Button {
                     goal.startMaintenance()
                 } label: {
-                    Label("リバウンド抑制モードを始める", systemImage: "shield.lefthalf.filled")
+                    Label("キープモードを始める", systemImage: "shield.lefthalf.filled")
                         .frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.borderedProminent)
@@ -165,7 +165,7 @@ struct GoalAchievedCard: View {
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
             } else {
-                NoticeLabel("Pro にアップグレードすると「リバウンド抑制モード」が使えます。範囲から出そうなときにやさしく知らせ、キープ用のカロリーの目安を出します。")
+                NoticeLabel("Pro にアップグレードすると「キープモード」が使えます。範囲から出そうなときにやさしく知らせ、キープ用のカロリーの目安を出します。")
                 NavigationLink {
                     ProLockedView()
                 } label: {

@@ -16,7 +16,7 @@ nonisolated struct DemoGoal: Equatable, Sendable {
     var deadlineDaysFromToday: Int
     /// 目標を決めたときの体重（kg）
     var startWeightKg: Double
-    /// リバウンド抑制モード（Pro）を何日前に始めたか。nil ならモードではない。
+    /// キープモード（Pro）を何日前に始めたか。nil ならモードではない。
     var maintenanceStartDaysAgo: Int? = nil
 }
 
@@ -50,7 +50,7 @@ nonisolated enum DemoScenario: String, CaseIterable, Identifiable, Sendable {
     case tooAggressive
     /// 記録が 10 日分だけ。予測は「参考値」
     case fewRecords
-    /// リバウンド抑制モード（Pro）。範囲の中だが少しずつ上がっていて「そろそろ端」
+    /// キープモード（Pro）。範囲の中だが少しずつ上がっていて「そろそろ端」
     case maintenance
 
     var id: String { rawValue }
@@ -65,7 +65,7 @@ nonisolated enum DemoScenario: String, CaseIterable, Identifiable, Sendable {
         case .plateau: String(localized: "② 横ばい（停滞期）")
         case .tooAggressive: String(localized: "③ 目標が速すぎる")
         case .fewRecords: String(localized: "④ 記録が 10 日だけ")
-        case .maintenance: String(localized: "⑤ リバウンド抑制モード（Pro）")
+        case .maintenance: String(localized: "⑤ キープモード（Pro）")
         }
     }
 

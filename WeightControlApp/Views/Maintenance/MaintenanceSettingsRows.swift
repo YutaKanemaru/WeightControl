@@ -1,7 +1,7 @@
 import SwiftUI
 import SwiftData
 
-/// 設定タブの「目標」の欄に、リバウンド抑制モード中だけ出す行。
+/// 設定タブの「目標」の欄に、キープモード中だけ出す行。
 ///
 /// キープの範囲を大きく見せ、範囲の幅（±1.0 / ±1.5 / ±2.0 kg）を選べるようにします。
 /// モードを終えるのは「新しい目標を決める」で目標を保存したときだけです（docs/MAINTENANCE_MODE.md）。
@@ -21,7 +21,7 @@ struct MaintenanceSettingsRows: View {
         )
 
         VStack(alignment: .leading, spacing: 8) {
-            Label("リバウンド抑制モード中", systemImage: "shield.lefthalf.filled")
+            Label("キープモード中", systemImage: "shield.lefthalf.filled")
                 .font(.subheadline.weight(.semibold))
                 .foregroundStyle(.green)
             MetricView(
@@ -48,7 +48,7 @@ struct MaintenanceSettingsRows: View {
         } label: {
             Label("新しい目標を決める", systemImage: "flag")
         }
-        .accessibilityHint(Text("目標を保存すると、リバウンド抑制モードを終えます"))
+        .accessibilityHint(Text("目標を保存すると、キープモードを終えます"))
     }
 }
 

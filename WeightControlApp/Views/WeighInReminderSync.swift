@@ -10,9 +10,9 @@ struct WeighInReminderSync: ViewModifier {
     @Query private var entries: [WeightEntry]
     /// 目標は 1 件だけの想定。念のため新しい順に並べて先頭を使う（ほめる通知の「目標の節目」に使う）
     @Query(sort: \WeightGoal.startDate, order: .reverse) private var goals: [WeightGoal]
-    /// 身長（リバウンド抑制モードの範囲をホームと同じにするため）
+    /// 身長（キープモードの範囲をホームと同じにするため）
     @Query private var profiles: [UserProfile]
-    /// Pro を使えるか（使えないときは、リバウンド抑制モードのお知らせを出さない）
+    /// Pro を使えるか（使えないときは、キープモードのお知らせを出さない）
     @Environment(ProAccess.self) private var pro: ProAccess?
     /// アプリが前面にあるか、裏に回ったか（scenePhase）。前面に戻るたびに日付が変わっている可能性があるので作り直す
     @Environment(\.scenePhase) private var scenePhase
@@ -39,7 +39,7 @@ struct WeighInReminderSync: ViewModifier {
         entries.map { WeightPoint(date: $0.date, weightKg: $0.weightKg) }
     }
 
-    /// ほめる通知に渡す目標。Pro を使えないときは、リバウンド抑制モードの情報を外す
+    /// ほめる通知に渡す目標。Pro を使えないときは、キープモードの情報を外す
     private var praiseGoal: DashboardGoal? {
         goals.first?.dashboardGoal(includesMaintenance: pro?.isUnlocked ?? false)
     }
