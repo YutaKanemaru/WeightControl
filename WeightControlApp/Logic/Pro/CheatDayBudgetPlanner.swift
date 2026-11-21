@@ -24,8 +24,20 @@ nonisolated struct CheatDayPlan: Equatable, Sendable {
     var cheatDayExtraKcal: Double
     /// 下限（基礎代謝など）や 1 日に控えめにできる量の上限のせいで、希望した分まで貯められなかったか
     var isLimited: Bool
+    /// 希望した分まで貯められなかったとき、いちばん効いた上限。`isLimited` が `false` なら nil。
+    var limit: CheatDayPlanLimit? = nil
     /// 7 日分の目安（`startDate` から順に）
     var days: [CheatDayPlanDay]
+}
+
+/// チートデー計画で、希望した分まで貯められなかった理由。
+nonisolated enum CheatDayPlanLimit: Equatable, Sendable {
+    /// チートデーは維持カロリー（消費カロリーの目安）までにしているため
+    case maintenance
+    /// ふだんの日も、摂取カロリーの下限（基礎代謝など）を下回らないようにしているため
+    case minimumIntake
+    /// ふだんの日に控えめにする量は 1 日 `maximumDailySavingKcal` までにしているため
+    case dailySaving
 }
 
 /// チートデー計画を立てられたかどうか。
@@ -50,6 +62,8 @@ nonisolated enum CheatDayPlanResult: Equatable, Sendable {
 /// - ふだんの日も、摂取カロリーの下限（`CalorieCalculator.minimumIntakeKcal`：基礎代謝など）を下回らない。
 /// - 1 日に控えめにする量は `maximumDailySavingKcal` まで。急に大きく減らすと続けにくいため。
 /// - チートデーは 1 週間に `maximumCheatDays` 日まで。
+/// - チートデーも、維持カロリー（体重が増えも減りもしない量＝消費カロリーの目安）まで。食べ放題にはしない。
+///   研究で効果が確かめられているのは「維持カロリーまで戻して食べる日」だからです（くわしくは docs/CHEAT_DAY.md）。
 ///
 /// どれも一般的な目安で、体調や持病のある人に向けた医療的な指示ではありません。
 nonisolated enum CheatDayBudgetPlanner {
@@ -67,12 +81,15 @@ nonisolated enum CheatDayBudgetPlanner {
     ///   - cheatDates: チートデーにしたい日。7 日の外の日は無視し、同じ日は 1 回と数えます。
     ///   - desiredCheatDayExtraKcal: チートデーに、いつもより多く食べたい量（kcal/日）。
     ///     `nil` なら、守ることの範囲でできるだけ多く貯めます。
+    ///   - maintenanceKcal: 維持カロリー（1 日の消費カロリーの目安 `IntakeRecommendation.tdeeKcal`）。
+    ///     チートデーはこれを超えないようにします。`nil` なら、この上限は使いません。
     static func plan(
         dailyTargetKcal: Double,
         minimumIntakeKcal: Double,
         startDate: Date,
         cheatDates: [Date],
         desiredCheatDayExtraKcal: Double? = nil,
+        maintenanceKcal: Double? = nil,
         calendar: Calendar = .current
     ) -> CheatDayPlanResult {
         // 7 日の中の何日目がチートデーか（0〜6）
@@ -87,7 +104,11 @@ nonisolated enum CheatDayBudgetPlanner {
 
         // ふだんの日に控えめにできる量の上限（下限を割らない・上限を超えない）
         let roomAboveMinimumKcal = max(0, dailyTargetKcal - minimumIntakeKcal)
-        let maximumSavingKcal = min(roomAboveMinimumKcal, maximumDailySavingKcal)
+        // チートデーを維持カロリーまでにするには、貯める量（1 日あたり）はここまで
+        let maintenanceCapKcal = maintenanceKcal.map {
+            max(0, $0 - dailyTargetKcal) * cheatDayCount / regularDayCount
+        } ?? .infinity
+        let maximumSavingKcal = min(roomAboveMinimumKcal, maximumDailySavingKcal, maintenanceCapKcal)
 
         // 希望があれば、その分を貯めるのに必要な量。なければ上限いっぱい。
         let wantedSavingKcal: Double
@@ -99,6 +120,13 @@ nonisolated enum CheatDayBudgetPlanner {
         let savingKcal = min(wantedSavingKcal, maximumSavingKcal)
         // 小数の誤差で「足りなかった」と判定しないよう、ほんの少しの差は無視する
         let isLimited = wantedSavingKcal - savingKcal > 1e-9
+        // いちばん効いた上限（同じなら、維持カロリー → 下限 → 1 日の上限の順に伝える）
+        let limit: CheatDayPlanLimit? = {
+            guard isLimited else { return nil }
+            if maintenanceCapKcal <= maximumSavingKcal { return .maintenance }
+            if roomAboveMinimumKcal <= maximumSavingKcal { return .minimumIntake }
+            return .dailySaving
+        }()
 
         let regularDayKcal = dailyTargetKcal - savingKcal
         let cheatDayExtraKcal = savingKcal * regularDayCount / cheatDayCount
@@ -120,6 +148,7 @@ nonisolated enum CheatDayBudgetPlanner {
             dailySavingKcal: savingKcal,
             cheatDayExtraKcal: cheatDayExtraKcal,
             isLimited: isLimited,
+            limit: limit,
             days: days
         ))
     }
