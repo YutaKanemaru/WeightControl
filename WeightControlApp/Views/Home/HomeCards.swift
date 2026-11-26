@@ -23,6 +23,8 @@ struct WeightSummaryCard: View {
     /// 目標までの残り（kg）。目標がなければ nil。
     let remainingKg: Double?
     let goalWeightKg: Double?
+    /// キープモード中ならキープの範囲。そのときは「目標まで」の代わりに範囲を出す。
+    var maintenanceRange: MaintenanceRange? = nil
 
     var body: some View {
         DashboardCard(title: "体重", systemImage: "scalemass") {
@@ -52,7 +54,16 @@ struct WeightSummaryCard: View {
 
     @ViewBuilder
     private var remaining: some View {
-        if let remainingKg, let goalWeightKg {
+        if let maintenanceRange {
+            MetricView(
+                "キープの範囲",
+                text: Text("\(maintenanceRange.lowerKg, format: kgFormat)〜\(maintenanceRange.upperKg, format: kgFormat)"),
+                unit: "kg",
+                caption: Text("中心 \(maintenanceRange.centerKg, format: kgFormat) kg"),
+                size: .medium,
+                tint: .green
+            )
+        } else if let remainingKg, let goalWeightKg {
             MetricView(
                 "目標まで",
                 value: remainingKg,
@@ -101,7 +112,8 @@ struct PraiseCard: View {
         case .streakMilestone: "star.fill"
         case .trendTowardGoal, .goalHalfway, .goalProgress: "hand.thumbsup.fill"
         case .trendSteady, .streak: "checkmark.seal.fill"
-        case .trendEncouragement, .restart: "heart.fill"
+        case .trendEncouragement, .restart, .maintenanceDrift: "heart.fill"
+        case .maintenanceKept: "shield.lefthalf.filled"
         }
     }
 }
@@ -124,8 +136,10 @@ struct WeightChartCard: View {
                 paceLine: dashboard.paceLine,
                 forecastLine: isProUnlocked ? dashboard.forecastLine : [],
                 goalWeightKg: goalWeightKg,
-                deadline: deadline,
-                forecastBand: isProUnlocked ? dashboard.forecastBand : []
+                // キープモード中は期限を使わないので、縦線も出さない
+                deadline: dashboard.maintenance == nil ? deadline : nil,
+                forecastBand: isProUnlocked ? dashboard.forecastBand : [],
+                keepRange: dashboard.maintenance?.range
             )
             if !isProUnlocked, !dashboard.forecastLine.isEmpty {
                 ProLockedHint("目標までの点線の予測は Pro で見られます")
@@ -285,9 +299,11 @@ struct IntakeCard: View {
     var energyChoice: EnergyExpenditureChoice?
     /// 今日がチートデー（Pro）か。そのときは目安を維持カロリー（消費カロリーの目安と同じ量）で出す
     var isCheatDay: Bool = false
+    /// キープモード中なら、その状態（見出しを「維持カロリーの目安」などに変える）
+    var maintenanceStatus: MaintenanceStatus? = nil
 
     var body: some View {
-        DashboardCard(title: "1 日の摂取カロリーの目安", systemImage: "fork.knife") {
+        DashboardCard(title: title, systemImage: "fork.knife") {
             if isCheatDay {
                 MetricView(
                     value: intake.tdeeKcal.rounded(),
@@ -307,6 +323,15 @@ struct IntakeCard: View {
             if intake.isRaisedToMinimum && !isCheatDay {
                 NoticeLabel("体のために、これより少なくしないよう下限に合わせています。そのぶん、目標のペースより少しゆっくりになります。")
             }
+        }
+    }
+
+    /// 見出し。キープモード中は、範囲の中なら「維持カロリー」、外なら「ゆっくり戻す」目安と伝える
+    private var title: LocalizedStringKey {
+        switch maintenanceStatus {
+        case nil: "1 日の摂取カロリーの目安"
+        case .inRange?, .nearEdge?: "1 日の維持カロリーの目安"
+        case .above?, .below?: "ゆっくり範囲に戻すための目安"
         }
     }
 

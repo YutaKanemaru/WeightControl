@@ -38,6 +38,11 @@ struct ProOfferView: View {
                         detail: "予定より先に進んでいるとき、維持カロリーまで食べてよい日をアプリが提案します。食べ放題の日ではありません。",
                         systemImage: "fork.knife.circle"
                     )
+                    InfoPointRow(
+                        title: "キープモード",
+                        detail: "目標に届いたあと、体重を目標 ±1.5 kg の範囲にキープします。範囲から出そうなときにやさしく知らせ、維持カロリーの目安を出します。",
+                        systemImage: "shield.lefthalf.filled"
+                    )
                 }
 
                 Section {

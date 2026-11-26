@@ -19,18 +19,28 @@ final class WeightGoal {
     /// 後から追加した列です。既定値（"manual"＝自分で決める）があるので、以前に保存した目標は
     /// 「自分で決めた期限」として読み込まれ、期限は変わりません。
     var paceModeRawValue: String = "manual"
+    /// キープモード（Pro）を始めた日。nil ならモードではありません（docs/MAINTENANCE_MODE.md）。
+    /// 後から追加した列です。既定値が nil なので、以前に保存した目標は「モードではない目標」として読み込まれます。
+    /// モード中は `targetWeightKg` が範囲の中心になり、`deadline` は使いません。
+    var maintenanceStartDate: Date? = nil
+    /// キープモードの範囲の幅（中心からの片側、kg）。±1.5 kg なら 1.5。後から追加した列で、既定値は 1.5。
+    var maintenanceHalfWidthKg: Double = 1.5
 
     init(
         targetWeightKg: Double,
         deadline: Date,
         startDate: Date = .now,
         startWeightKg: Double? = nil,
-        paceModeRawValue: String = "manual"
+        paceModeRawValue: String = "manual",
+        maintenanceStartDate: Date? = nil,
+        maintenanceHalfWidthKg: Double = 1.5
     ) {
         self.targetWeightKg = targetWeightKg
         self.deadline = deadline
         self.startDate = startDate
         self.startWeightKg = startWeightKg
         self.paceModeRawValue = paceModeRawValue
+        self.maintenanceStartDate = maintenanceStartDate
+        self.maintenanceHalfWidthKg = maintenanceHalfWidthKg
     }
 }

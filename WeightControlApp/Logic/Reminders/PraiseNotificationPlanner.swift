@@ -9,6 +9,8 @@ nonisolated struct PlannedPraiseNotification: Equatable, Sendable {
         case weeklyRecap(recordedDays: Int, milestone: PraiseMilestone?)
         /// 節目に届いたお祝い
         case milestone(PraiseMilestone)
+        /// キープモード（Pro）：範囲から出た・範囲に戻った
+        case maintenance(MaintenanceAdvisor.Crossing)
     }
 
     /// 通知の ID（例: `praiseNotification.weeklyRecap.2026-11-22`）。同じ ID で登録し直すと上書きされます。
@@ -35,6 +37,9 @@ nonisolated struct PraiseMilestone: Equatable, Sendable {
 /// 2. **節目のお祝い**：連続記録（7 日連続など）や、目標までの道のりの 25/50/75/100% に届いた日の夜に 1 通。
 ///    節目に届いた記録が夜 20:00 より後なら、次の日の夜に出します。
 ///    日曜（ふり返りの日）に節目に届いたときは、ふり返りの 1 通にまとめます。
+/// 3. **キープモード（Pro）**：範囲から出た日・範囲に戻った日の夜に 1 通ずつ（docs/MAINTENANCE_MODE.md）。
+///    モード中は目標の節目（25/50/75/100%）は出さず、ふり返りに「範囲の中でキープできました」をそえます。
+///    Pro を使えないときは、呼ぶ側が目標からモードの情報を外して渡します（`WeightGoal.dashboardGoal(includesMaintenance:)`）。
 ///
 /// ## なぜ「その日の夜」にするのか
 /// 節目に届くのは記録した瞬間なので、そのときはアプリの中でほめています。
@@ -64,19 +69,37 @@ nonisolated enum PraiseNotificationPlanner {
     /// - Parameters:
     ///   - points: 体重の記録（順番はバラバラで OK）
     ///   - goal: いまの目標。なければ nil（目標の節目は出しません）
+    ///   - heightCm: 身長（キープモードの範囲の下の端を BMI 18.5 で止めるため。ホームと同じ範囲にする）
     ///   - now: 「今」とみなす日時。テストで日付を固定できるように引数にしています。
     ///   - calendar: 日付の区切り（タイムゾーン）と曜日を決めるカレンダー
     static func plan(
         points: [WeightPoint],
         goal: DashboardGoal?,
+        heightCm: Double? = nil,
         now: Date = .now,
         calendar: Calendar = .current
     ) -> [PlannedPraiseNotification] {
-        var milestoneNotifications = plannedMilestones(points: points, goal: goal, now: now, calendar: calendar)
+        // キープモード中なら、その範囲と始めた日
+        let maintenance: (range: MaintenanceRange, startDate: Date)? = goal.flatMap { goal in
+            goal.maintenanceStartDate.map { start in
+                (range: MaintenanceAdvisor.range(centerKg: goal.targetWeightKg, halfWidthKg: goal.maintenanceHalfWidthKg, heightCm: heightCm),
+                 startDate: start)
+            }
+        }
+        // モード中は目標の節目は出さない（もう届いているため）
+        var milestoneNotifications = plannedMilestones(points: points, goal: maintenance == nil ? goal : nil, now: now, calendar: calendar)
         var result: [PlannedPraiseNotification] = []
+        if let maintenance {
+            result.append(contentsOf: plannedMaintenanceCrossings(
+                points: points, range: maintenance.range, startDate: maintenance.startDate, now: now, calendar: calendar
+            ))
+        }
 
         if let recapFire = nextRecapDate(after: now, calendar: calendar) {
             let recordedDays = recordedDayCount(points: points, endingOn: recapFire, calendar: calendar)
+            let keptInRange = maintenance.map {
+                keptInRangeAllWeek(points: points, range: $0.range, startDate: $0.startDate, endingOn: recapFire, calendar: calendar)
+            } ?? false
             // ふり返りと同じ時刻の節目のお祝いは、ふり返りにまとめる
             let sameTimeIndex = milestoneNotifications.firstIndex { $0.fireDate == recapFire }
             var mergedMilestone: PraiseMilestone?
@@ -85,7 +108,7 @@ nonisolated enum PraiseNotificationPlanner {
                 milestoneNotifications.remove(at: sameTimeIndex)
             }
             if recordedDays > 0 {
-                let text = recapMessage(recordedDays: recordedDays, milestone: mergedMilestone)
+                let text = recapMessage(recordedDays: recordedDays, milestone: mergedMilestone, keptInRange: keptInRange)
                 result.append(PlannedPraiseNotification(
                     identifier: identifier(kind: "weeklyRecap", date: recapFire, calendar: calendar),
                     fireDate: recapFire,
@@ -122,11 +145,15 @@ nonisolated enum PraiseNotificationPlanner {
     }
 
     /// ふり返りの文面。記録した日数に応じて、いつもほめる言い方にします。
-    static func recapMessage(recordedDays: Int, milestone: PraiseMilestone?) -> (title: String, body: String) {
+    /// - Parameter keptInRange: キープモード中で、この週の記録の日がすべて範囲の中だったか
+    static func recapMessage(recordedDays: Int, milestone: PraiseMilestone?, keptInRange: Bool = false) -> (title: String, body: String) {
         let title = String(localized: "今週のふり返り")
         var sentences: [String] = []
         if let milestone {
             sentences.append(contentsOf: milestoneSentences(milestone))
+        }
+        if keptInRange {
+            sentences.append(String(localized: "この1週間、範囲の中でキープできました！"))
         }
         if recordedDays >= recapDays {
             sentences.append(String(localized: "この1週間、毎日記録できました。すばらしい習慣です！"))
@@ -136,6 +163,74 @@ nonisolated enum PraiseNotificationPlanner {
             sentences.append(String(localized: "この1週間で\(recordedDays)日記録できました。記録を続けていること自体が大きな一歩です。"))
         }
         return (title, sentences.joined())
+    }
+
+    // MARK: - キープモード
+
+    /// 今日・昨日に範囲から出た・戻ったお知らせのうち、まだ出す時刻が来ていないもの。
+    /// 前の記録の日と比べて切りかわった日だけなので、範囲の外にいるあいだに何度も届くことはありません。
+    static func plannedMaintenanceCrossings(
+        points: [WeightPoint],
+        range: MaintenanceRange,
+        startDate: Date,
+        now: Date,
+        calendar: Calendar
+    ) -> [PlannedPraiseNotification] {
+        let daily = WeightTrendCalculator.dailyAverages(points, calendar: calendar)
+        let today = calendar.startOfDay(for: now)
+        let candidateDays = [DayMath.date(byAddingDays: -1, to: today, calendar: calendar), today]
+
+        var result: [PlannedPraiseNotification] = []
+        for day in candidateDays {
+            guard let crossing = MaintenanceAdvisor.crossing(on: day, daily: daily, range: range, startDate: startDate, calendar: calendar),
+                  let fireDate = milestoneFireDate(on: day, points: points, calendar: calendar),
+                  fireDate > now else { continue }
+            let text = maintenanceMessage(crossing)
+            result.append(PlannedPraiseNotification(
+                identifier: identifier(kind: "maintenance", date: day, calendar: calendar),
+                fireDate: fireDate,
+                kind: .maintenance(crossing),
+                title: text.title,
+                body: text.body
+            ))
+        }
+        return result
+    }
+
+    /// 範囲から出た・戻ったお知らせの文面。出たときも責めず、戻し方をそえます。
+    static func maintenanceMessage(_ crossing: MaintenanceAdvisor.Crossing) -> (title: String, body: String) {
+        switch crossing {
+        case .left(.up):
+            return (String(localized: "体重が範囲より少し上になりました"),
+                    String(localized: "記録を続けているから早めに気づけました。あせらず、いつもの食事を少し整えれば戻せます。"))
+        case .left(.down):
+            return (String(localized: "体重が範囲より少し下になりました"),
+                    String(localized: "記録を続けているから早めに気づけました。食事をしっかりとって、ゆっくり戻していきましょう。"))
+        case .returned:
+            return (String(localized: "範囲の中に戻りました！"),
+                    String(localized: "ゆっくり整えてきた成果です。このままキープしていきましょう。"))
+        }
+    }
+
+    /// `endDate` の日を含めた直近 7 日間（モードを始めた日より前は除く）に記録した日が 1 日以上あり、
+    /// その日の目安がすべて範囲の中だったか。
+    static func keptInRangeAllWeek(
+        points: [WeightPoint],
+        range: MaintenanceRange,
+        startDate: Date,
+        endingOn endDate: Date,
+        calendar: Calendar
+    ) -> Bool {
+        let daily = WeightTrendCalculator.dailyAverages(points, calendar: calendar)
+        let startDay = calendar.startOfDay(for: startDate)
+        let weekDays = daily.map(\.date).filter { day in
+            let distance = DayMath.days(from: day, to: endDate, calendar: calendar)
+            return distance >= 0 && distance < recapDays && day >= startDay
+        }
+        guard !weekDays.isEmpty else { return false }
+        return weekDays.allSatisfy { day in
+            MaintenanceAdvisor.weightEstimate(asOf: day, daily: daily, calendar: calendar).map(range.contains) ?? false
+        }
     }
 
     // MARK: - 節目のお祝い

@@ -26,6 +26,8 @@ struct WeightChartView: View {
     let deadline: Date?
     /// Pro：予測の幅（薄い帯）。Pro を使えないときは空
     var forecastBand: [ForecastBandPoint] = []
+    /// Pro：キープモードのキープの範囲（薄い緑の帯）。モード中でなければ nil
+    var keepRange: MaintenanceRange? = nil
 
     /// グラフに出す過去の日数（古すぎる記録まで出すと、最近の動きが見えにくくなるため）
     private let visibleHistoryDays = 90
@@ -47,6 +49,7 @@ struct WeightChartView: View {
         var values = visibleMeasured.map(\.weightKg) + paceLine.map(\.weightKg) + forecastLine.map(\.weightKg)
             + forecastBand.flatMap { [$0.lowerKg, $0.upperKg] }
         if let goalWeightKg { values.append(goalWeightKg) }
+        if let keepRange { values.append(contentsOf: [keepRange.lowerKg, keepRange.upperKg]) }
         guard let low = values.min(), let high = values.max() else { return 0...1 }
         let padding = max(0.5, (high - low) * 0.1)
         return (low - padding)...(high + padding)
@@ -63,6 +66,17 @@ struct WeightChartView: View {
                         yEnd: .value("遅めの見込み", point.upperKg)
                     )
                     .foregroundStyle(Color.accentColor.opacity(0.15))
+                }
+
+                // キープモードのキープの範囲。表示している期間の左端から右端まで、薄い緑の帯にする
+                if let keepRange, let first = visibleMeasured.first?.date, let last = visibleMeasured.last?.date {
+                    RectangleMark(
+                        xStart: .value("日付", first, unit: .day),
+                        xEnd: .value("日付", last, unit: .day),
+                        yStart: .value("下の端", keepRange.lowerKg),
+                        yEnd: .value("上の端", keepRange.upperKg)
+                    )
+                    .foregroundStyle(Color.green.opacity(0.15))
                 }
 
                 if let goalWeightKg {
@@ -167,6 +181,12 @@ struct WeightChartView: View {
             legendItem("予測") {
                 DashLine().stroke(Color.accentColor.opacity(0.7), style: StrokeStyle(lineWidth: 2, dash: [4, 3]))
                     .frame(width: 16, height: 3)
+            }
+        }
+        if keepRange != nil {
+            legendItem("キープの範囲") {
+                RoundedRectangle(cornerRadius: 2).fill(Color.green.opacity(0.3))
+                    .frame(width: 16, height: 9)
             }
         }
         if !forecastBand.isEmpty {

@@ -51,7 +51,7 @@ struct ProSettingsSection: View {
             Text("Pro")
         } footer: {
             VStack(alignment: .leading, spacing: 4) {
-                Text("目標に届く日・見込みの幅・チートデーの提案が使えます。1 か月無料で試せて、自動で料金がかかることはありません。購入のしくみは準備中です。")
+                Text("目標に届く日・見込みの幅・チートデーの提案・キープモード（目標に届いたあと、体重を範囲の中にキープするモード）が使えます。1 か月無料で試せて、自動で料金がかかることはありません。購入のしくみは準備中です。")
                 #if DEBUG
                 Text("開発用の項目は Debug ビルドだけに表示され、Release ビルドでは効きません。")
                 #endif

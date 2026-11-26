@@ -115,6 +115,8 @@ struct EditGoalView: View {
             goal.targetWeightKg = targetWeightKg
             goal.deadline = deadline
             goal.paceMode = draft.mode
+            // 新しい目標を決めたので、キープモードは終える（docs/MAINTENANCE_MODE.md）
+            goal.endMaintenance()
         } else {
             modelContext.insert(WeightGoal(
                 targetWeightKg: targetWeightKg,

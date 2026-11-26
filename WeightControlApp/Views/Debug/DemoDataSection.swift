@@ -97,7 +97,9 @@ enum DemoDataLoader {
             targetWeightKg: dataSet.goal.targetWeightKg,
             deadline: dataSet.goal.deadline,
             startDate: dataSet.goalStartDate,
-            startWeightKg: dataSet.goal.startWeightKg
+            startWeightKg: dataSet.goal.startWeightKg,
+            maintenanceStartDate: dataSet.goal.maintenanceStartDate,
+            maintenanceHalfWidthKg: dataSet.goal.maintenanceHalfWidthKg
         ))
 
         try? context.save()
