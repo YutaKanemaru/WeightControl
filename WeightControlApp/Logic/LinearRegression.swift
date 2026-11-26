@@ -39,7 +39,7 @@ nonisolated enum LinearRegression {
     }
 }
 
-extension LinearRegression {
+nonisolated extension LinearRegression {
     /// 傾きの「標準誤差」：点が直線のまわりにどれくらいばらついているかから見た、傾きの不確かさ。
     ///
     ///     標準誤差 ＝ √( 残差の 2 乗の合計 ÷ (点の数 − 2) ÷ x のずれの 2 乗の合計 )
