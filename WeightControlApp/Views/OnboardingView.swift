@@ -7,8 +7,9 @@ import SwiftData
 /// 1. ようこそ：アプリでできることと、ご利用の前の注意（医療アドバイスではありません など）
 /// 2. ヘルスケア：連携するかを選ぶ。連携すると、ヘルスケアの身長・生まれた年・性別を次のページに入れておき、
 ///    体重の記録も取り込む（ヘルスケアを使えない端末や、もう連携している場合はこのページを飛ばす）
-/// 3. あなたについて：身長・生まれた年・性別・活動量と、いまの体重（任意）
-/// 4. 目標：目標体重とペース（ゆるやか／ハード／自分で決める）。期限はアプリが提案する（あとから決めてもよい）
+/// 3. 通知：記録のリマインドとほめる通知をオンにするかを選ぶ（まだ一度も通知の許可を聞いていないときだけ）
+/// 4. あなたについて：身長・生まれた年・性別・活動量と、いまの体重（任意）
+/// 5. 目標：目標体重とペース（ゆるやか／ハード／自分で決める）。期限はアプリが提案する（あとから決めてもよい）
 ///
 /// `NavigationStack(path:)` は「いま何ページ目まで進んでいるか」を配列で管理する仕組みで、
 /// 配列に要素を足すと次のページへ進み、戻るボタンで要素が減ります。
@@ -23,6 +24,7 @@ struct OnboardingView: View {
     /// 進むページの種類
     private enum Page: Hashable {
         case health
+        case notifications
         case profile
         case goal
     }
@@ -42,6 +44,18 @@ struct OnboardingView: View {
     /// ヘルスケアのページで「連携する」か「今は連携しない」を選び終えたか
     /// （連携した後もステップの数が変わらないように覚えておく）
     @State private var didFinishHealthStep = false
+    /// まだ一度も通知の許可を聞いていないか（このときだけ「通知」のページを出す）
+    @State private var needsNotificationPrompt = false
+    /// 「通知」のページで選び終えたか（許可を聞いたあとも、ステップの数が変わらないように覚えておく）
+    @State private var didFinishNotificationStep = false
+    /// 通知の許可を待っている間 true
+    @State private var isRequestingNotifications = false
+
+    // 通知の設定は、設定タブの「通知」（`ReminderSettingsSection`）と同じ置き場所に保存する
+    @AppStorage(ReminderPreferenceKey.isEnabled) private var isReminderEnabled = false
+    @AppStorage(ReminderPreferenceKey.hour) private var reminderHour = ReminderTime.defaultTime.hour
+    @AppStorage(ReminderPreferenceKey.minute) private var reminderMinute = ReminderTime.defaultTime.minute
+    @AppStorage(PraiseNotificationPreferenceKey.isEnabled) private var isPraiseEnabled = false
 
     var body: some View {
         NavigationStack(path: $path) {
@@ -49,6 +63,7 @@ struct OnboardingView: View {
                 .navigationDestination(for: Page.self) { page in
                     switch page {
                     case .health: healthPage
+                    case .notifications: notificationsPage
                     case .profile: profilePage
                     case .goal: goalPage
                     }
@@ -102,7 +117,7 @@ struct OnboardingView: View {
         .safeAreaInset(edge: .bottom) {
             VStack(spacing: 8) {
                 bottomButton("確認して次へ") {
-                    path.append(showsHealthPage ? .health : .profile)
+                    path.append(showsHealthPage ? .health : pageAfterHealth)
                 }
                 Text("「確認して次へ」を押すと、上の内容に同意したものとします。")
                     .font(.footnote)
@@ -113,6 +128,10 @@ struct OnboardingView: View {
             .background(.bar)
         }
         .toolbar(.hidden, for: .navigationBar)
+        // 通知の許可をまだ聞いていないかを、最初に確かめておく
+        .task {
+            needsNotificationPrompt = await WeighInReminderScheduler.shared.needsAuthorizationRequest()
+        }
     }
 
     // MARK: - ヘルスケア（使える端末だけ）
@@ -123,8 +142,20 @@ struct OnboardingView: View {
         return health.isAvailable && (!health.isEnabled || isConnectingHealth || didFinishHealthStep)
     }
 
+    /// 「通知」のページを出すか
+    private var showsNotificationPage: Bool {
+        needsNotificationPrompt || didFinishNotificationStep
+    }
+
+    /// ヘルスケアのページの次に進むページ
+    private var pageAfterHealth: Page {
+        showsNotificationPage ? .notifications : .profile
+    }
+
     /// 入力のページが全部で何ステップあるか
-    private var totalSteps: Int { showsHealthPage ? 3 : 2 }
+    private var totalSteps: Int {
+        2 + (showsHealthPage ? 1 : 0) + (showsNotificationPage ? 1 : 0)
+    }
 
     private var healthPage: some View {
         ScrollView {
@@ -175,7 +206,7 @@ struct OnboardingView: View {
 
                 Button {
                     didFinishHealthStep = true
-                    path.append(.profile)
+                    path.append(pageAfterHealth)
                 } label: {
                     Text("今は連携しない")
                         .frame(maxWidth: .infinity)
@@ -200,7 +231,7 @@ struct OnboardingView: View {
             apply(await health.profilePrefill())
             didFinishHealthStep = true
             isConnectingHealth = false
-            path.append(.profile)
+            path.append(pageAfterHealth)
         }
     }
 
@@ -219,6 +250,103 @@ struct OnboardingView: View {
         case nil: break
         }
         didPrefillFromHealth = true
+    }
+
+    // MARK: - 通知（まだ一度も許可を聞いていないときだけ）
+
+    private var notificationsPage: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 28) {
+                VStack(alignment: .leading, spacing: 12) {
+                    stepHeader(step: showsHealthPage ? 2 : 1, message: "あとから設定タブの「通知」でいつでも変えられます。")
+                    Text("通知をオンにしますか？")
+                        .font(.title.bold())
+                        .accessibilityAddTraits(.isHeader)
+                }
+
+                VStack(alignment: .leading, spacing: 20) {
+                    InfoPointRow(
+                        title: "記録のリマインド",
+                        detail: "毎日決まった時刻に、体重の記録をやさしくお知らせします。その日にもう記録していれば、お知らせはしません。",
+                        systemImage: "bell"
+                    )
+                    InfoPointRow(
+                        title: "ほめる通知",
+                        detail: "日曜の夜に 1 週間のふり返りを、連続記録や目標までの節目に届いた日の夜にお祝いをお届けします。",
+                        systemImage: "hands.clap"
+                    )
+                }
+
+                DashboardCard(title: "お知らせする時刻", systemImage: "clock") {
+                    DatePicker("記録のリマインド", selection: reminderTimeBinding, displayedComponents: .hourAndMinute)
+                    NoticeLabel("体重は、朝トイレのあと・朝食の前に測ると、日々のブレが小さくなります。")
+                }
+
+                NoticeLabel("「通知をオンにする」を押すと、通知を許可するかを聞く画面が出ます。通知はこの iPhone の中で作られ、外部には送りません。")
+            }
+            .padding()
+        }
+        .safeAreaInset(edge: .bottom) {
+            VStack(spacing: 12) {
+                Button(action: enableNotifications) {
+                    HStack(spacing: 8) {
+                        if isRequestingNotifications {
+                            ProgressView()
+                        }
+                        Text("通知をオンにする")
+                            .font(.headline)
+                    }
+                    .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.large)
+
+                Button {
+                    didFinishNotificationStep = true
+                    path.append(.profile)
+                } label: {
+                    Text("今はしない")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.large)
+            }
+            .disabled(isRequestingNotifications)
+            .padding()
+            .background(.bar)
+        }
+        .navigationTitle("通知")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+
+    /// 通知の許可を求め、許可されたら記録のリマインドとほめる通知をオンにして次のページへ進む。
+    /// 許可されなくても、そのまま次へ進む（設定タブからあとで許可できる）。
+    private func enableNotifications() {
+        isRequestingNotifications = true
+        Task {
+            let granted = await WeighInReminderScheduler.shared.requestAuthorization()
+            isReminderEnabled = granted
+            isPraiseEnabled = granted
+            didFinishNotificationStep = true
+            isRequestingNotifications = false
+            path.append(.profile)
+        }
+    }
+
+    /// DatePicker は `Date` を扱うので、保存している「時・分」と `Date` を相互に変換する
+    /// （設定タブの `ReminderSettingsSection` と同じ考え方）
+    private var reminderTimeBinding: Binding<Date> {
+        Binding(
+            get: {
+                let time = ReminderTime(hour: reminderHour, minute: reminderMinute)
+                return Calendar.current.date(bySettingHour: time.hour, minute: time.minute, second: 0, of: .now) ?? .now
+            },
+            set: { newDate in
+                let parts = Calendar.current.dateComponents([.hour, .minute], from: newDate)
+                reminderHour = parts.hour ?? ReminderTime.defaultTime.hour
+                reminderMinute = parts.minute ?? ReminderTime.defaultTime.minute
+            }
+        )
     }
 
     // MARK: - あなたについて

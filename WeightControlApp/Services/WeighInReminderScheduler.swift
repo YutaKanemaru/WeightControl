@@ -41,6 +41,12 @@ final class WeighInReminderScheduler {
         return status == .authorized || status == .provisional || status == .ephemeral
     }
 
+    /// まだ一度も通知の許可を聞いていないか（初回設定の「通知」のページを出すかに使う）。
+    /// iOS の許可のダイアログはアプリで 1 回しか出せないので、もう答えている人にはページを出しません。
+    func needsAuthorizationRequest() async -> Bool {
+        await center.notificationSettings().authorizationStatus == .notDetermined
+    }
+
     /// 通知が「許可しない」に設定されているか（このときはアプリからは許可を求め直せず、設定アプリで変える必要がある）。
     func isDenied() async -> Bool {
         await center.notificationSettings().authorizationStatus == .denied
