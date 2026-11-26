@@ -16,7 +16,7 @@
 - **Apple 純正フレームワークのみ**（SwiftUI / SwiftData / HealthKit / UserNotifications / Swift Charts / WidgetKit / WatchKit）。外部ライブラリは相談なしに追加しない。
 - データは**端末内のみ**（SwiftData）。外部サーバーへの送信はしない。
 - 対応 OS は `IPHONEOS_DEPLOYMENT_TARGET` に従う（現在 iOS 26.0）。iOS 27 で追加された API を使うときは `if #available(iOS 27, *)` で分岐する。
-- プロジェクトファイルは Xcode のフォルダ同期方式（`project.xcproj`）。`WeightControlApp/` 配下にファイルを置けば自動でターゲットに入るので、ファイル追加のためにプロジェクトファイルを編集する必要はない。
+- プロジェクトファイルは Xcode のフォルダ同期方式（`project.xcproj`）。`WeightControlApp/` 配下にファイルを置けば自動でターゲットに入るので、ファイル追加のためにプロジェクトファイルを編集する必要はない（`Shared/` はアプリとウィジェット、`WeightForecastWidget/` はウィジェットに自動で入る）。形式の資料は Apple の `apple/xcode-project-format`（`XCSchema`）。
 - 既定のアクター分離は `MainActor`（`SWIFT_DEFAULT_ACTOR_ISOLATION`）。重い計算を別スレッドで行う場合は `nonisolated` や `@concurrent` を明示する。
 
 ## フォルダの役割
@@ -26,9 +26,11 @@
 | `WeightControlApp/App/` | `@main` のアプリ本体、ModelContainer の設定 | 小さく保つ |
 | `WeightControlApp/Models/` | `@Model` のデータ型 | 保存する「形」だけ。計算は Logic へ |
 | `WeightControlApp/Views/` | SwiftUI の画面・部品（共通の見た目の部品は `Views/Components/`） | 計算ロジックを直接書かない |
-| `WeightControlApp/Logic/` | 予測（実測体重への線形回帰。EMA はほめるメッセージ用）、カロリー計算（Mifflin-St Jeor）、メッセージ生成など。`Food/`・`Messages/`・`Calendar/`・`Health/`・`Reminders/`・`History/`・`Pro/`・`Maintenance/`・`Demo/` のサブフォルダあり | **SwiftUI / SwiftData に依存しない純粋な関数・struct**（`nonisolated` を付ける）。必ずテストを書く |
+| `WeightControlApp/Logic/` | 予測（実測体重への線形回帰。EMA はほめるメッセージ用）、カロリー計算（Mifflin-St Jeor）、メッセージ生成など。`Food/`・`Messages/`・`Calendar/`・`Health/`・`Reminders/`・`History/`・`Pro/`・`Maintenance/`・`Widget/`・`Demo/` のサブフォルダあり | **SwiftUI / SwiftData に依存しない純粋な関数・struct**（`nonisolated` を付ける）。必ずテストを書く |
 | `WeightControlApp/Services/` | HealthKit・通知（UserNotifications）など、外の仕組みとやり取りする窓口と、その結果を SwiftData に反映する係 | 外の型（`HKQuantitySample` など）はここで値の型に変換し、判断のルールは `Logic/` に置いてテストする |
 | `WeightControlApp/Resources/` | アプリに同梱するデータ（`FoodCalories.json`） | 数値の修正はコードではなく JSON で |
+| `Shared/` | アプリとウィジェットの両方に入るファイル（`WidgetSnapshot` など） | Foundation だけを使い、`nonisolated` を付ける。Logic・Models の型は使えない（ウィジェットに入っていないため）。テストはアプリ側のテストで書く |
+| `WeightForecastWidget/` | ウィジェット（WidgetKit の拡張のターゲット `WeightForecastWidgetExtension`） | 計算はしない。アプリが App Group に書いたスナップショットを読んで表示するだけ |
 | `WeightControlAppTests/` | Swift Testing の単体テスト | `Logic/` のテストが中心 |
 | `WeightControlAppUITests/` | XCTest の UI テスト | 主要な画面遷移だけ |
 
@@ -64,6 +66,7 @@ Apple の「ワークアウト」アプリのような、**シンプルで、運
 - チートデーは Pro 機能で、ユーザーが日を選ぶのではなく、予定より 0.5 kg 以上先に進んでいて期限に間に合いそうなときにアプリが提案する（週 2 日まで・維持カロリーまで）。判断は `Logic/Pro/CheatDaySuggestionAdvisor`、決めた日は `Models/CheatDay` に保存。仕様は `docs/CHEAT_DAY.md`。画面の呼び方は「チートデー」（「食べ放題ではない」を必ずそえる）。判断は端末内のルールで、クラウドの AI は使わない。年額サブスクは保留。
 - キープモード（ロードマップでは「維持モード」。Pro 機能）：目標に届いたあと、目標 ±1.5 kg（設定で ±1.0/2.0）の範囲にキープする。判断は `Logic/Maintenance/MaintenanceAdvisor`、モード中かどうかは `WeightGoal.maintenanceStartDate`（nil でなければモード中）。目標達成のカードのボタンで始め、新しい目標を保存したら終わる。モード中は予測・修正案・見込みの幅・チートデーを出さない。無料版の人には目標達成のときに Pro の案内を出す。仕様は `docs/MAINTENANCE_MODE.md`。
 - 目標の期限はアプリが提案する（ゆるやか＝週に体重の 0.5 %・ハード＝1 %、食事の下限でも止める。「自分で決める」も残す）。仕様は `docs/GOAL_DEADLINE.md`。
+- ウィジェット（フェーズ 16、無料）：アプリが `WidgetSnapshotBuilder` で表示用の数字（ホームと同じ値）を作り、App Group（`group.com.utahengineering.weightforecast`）の `UserDefaults` に保存して `WidgetCenter` で描き直しを頼む（`Views/WidgetSnapshotSync`）。ウィジェットはそれを読むだけで、SwiftData は共有しない。仕様は `docs/WIDGET.md`。ホームの「目標まで」などの計算を変えたら、ウィジェットにも同じ値が出ることを確かめる。
 - ロジックの入力は `SwiftData` の型ではなく `WeightPoint` などの値の型を使う。カロリー計算の `BiologicalSex` / `ActivityLevel` は `UserProfile.Sex` / `UserProfile.ActivityLevel` とは別の型なので、画面側で変換する。
 
 ## テスト

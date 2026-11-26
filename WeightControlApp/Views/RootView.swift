@@ -30,6 +30,8 @@ struct RootView: View {
         }
         // 記録や通知の設定が変わったら、リマインド通知を作り直す
         .weighInReminderSync()
+        // 記録や目標が変わったら、ホーム画面・ロック画面のウィジェットの数字を更新する（docs/WIDGET.md）
+        .widgetSnapshotSync()
     }
 }
 
