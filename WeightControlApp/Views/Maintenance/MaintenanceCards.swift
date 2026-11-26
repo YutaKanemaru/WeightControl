@@ -146,7 +146,17 @@ struct GoalAchievedCard: View {
     /// Pro を使えるか
     let isProUnlocked: Bool
 
+    /// Pro の説明と「1 か月無料で試す」の画面（`ProOfferView`）を開いているか
+    @State private var isShowingOffer = false
+
     var body: some View {
+        card
+            .sheet(isPresented: $isShowingOffer) {
+                ProOfferView()
+            }
+    }
+
+    private var card: some View {
         DashboardCard(title: "目標達成、おめでとうございます！", systemImage: "trophy.fill", tint: .green) {
             Text("ここからは、届いた体重をキープする時期です。減量のあとは体重が戻りやすいので、範囲を決めて早めに気づけるようにしておくと安心です。")
                 .font(.callout)
@@ -166,8 +176,8 @@ struct GoalAchievedCard: View {
                     .fixedSize(horizontal: false, vertical: true)
             } else {
                 NoticeLabel("Pro にアップグレードすると「キープモード」が使えます。範囲から出そうなときにやさしく知らせ、キープ用のカロリーの目安を出します。")
-                NavigationLink {
-                    ProLockedView()
+                Button {
+                    isShowingOffer = true
                 } label: {
                     Label("Pro について見る", systemImage: "star.circle")
                         .frame(maxWidth: .infinity)
