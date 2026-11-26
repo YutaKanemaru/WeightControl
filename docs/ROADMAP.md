@@ -73,7 +73,7 @@
 | #30 | フェーズ 14：キープモード（目標に届いたあと、目標 ±1.5 kg の範囲にキープする Pro 機能）。ホームに範囲のカード・グラフの緑の帯・維持カロリーの目安、目標達成のカード（Pro なら「始める」、無料版なら Pro の案内）、設定で幅（±1.0/1.5/2.0 kg）を選ぶ、ほめる通知に「範囲から出た・戻った」。`WeightGoal` に `maintenanceStartDate`・`maintenanceHalfWidthKg` を追加。デモデータ ⑤ |
 | #27 | フェーズ 12：チートデーの提案（`CheatDaySuggestionAdvisor`）。呼び方を「チートデー」に戻し、ホームに提案のカード（今日／明日／日を選ぶ・取り消し）、当日は摂取カロリーの目安を維持カロリーで表示、カレンダーに印。決めた日は新しいデータ型 `CheatDay` に保存。「日を選んで予算を立てる画面」と `CheatDayBudgetPlanner` は削除 |
 | #19 | フェーズ 15・9：カレンダータブを作り直し（連続記録日数と今月のスタンプ数を大きく、今日のスタンプのカード、空の状態、SF Symbols のスタンプ、VoiceOver・大きい文字・ダークモード）。表示用のまとめ `CalendarSummaryBuilder` |
-| #34 | フェーズ 16：ホーム画面（小・中）とロック画面（長方形・丸・1 行）のウィジェット。アプリが表示用の数字（`WidgetSnapshot`）を App Group に書き、ウィジェットは読むだけ。拡張のターゲット `WeightForecastWidgetExtension`、仕様 [WIDGET.md](WIDGET.md) |
+| #35 | フェーズ 16：ホーム画面（小・中）とロック画面（長方形・丸・1 行）のウィジェット。アプリが表示用の数字（`WidgetSnapshot`）を App Group に書き、ウィジェットは読むだけ。拡張のターゲット `WeightForecastWidgetExtension`、仕様 [WIDGET.md](WIDGET.md) |
 | #26 | フェーズ 2：目標の期限をアプリが提案（`GoalDeadlineProposer`）。目標の入力欄にペースの選択（ゆるやか／ハード／自分で決める）と大きな期限の表示。`WeightGoal` に決め方を保存（以前の目標は「自分で決める」のまま） |
 
 ## できているロジック（Logic/）
