@@ -13,6 +13,9 @@ struct WidgetSnapshotSync: ViewModifier {
     @Query private var profiles: [UserProfile]
     /// Pro を使えるか（使えないときは、キープモードの範囲を出さない）
     @Environment(ProAccess.self) private var pro: ProAccess?
+    /// 妊娠中モード（モード中と、終えたあと目標を一時停止している間は、目標を使わない。docs/PREGNANCY_MODE.md）
+    @Query private var pregnancyPlans: [PregnancyPlan]
+    @AppStorage(PregnancyPreferenceKey.resumedGoalEndedAt) private var resumedGoalEndedAt = 0.0
     /// 前面に戻るたびに日付が変わっている可能性があるので作り直す
     @Environment(\.scenePhase) private var scenePhase
 
@@ -31,7 +34,11 @@ struct WidgetSnapshotSync: ViewModifier {
 
     func body(content: Content) -> some View {
         let isProUnlocked = pro?.isUnlocked ?? false
-        let goal = goals.first?.dashboardGoal(includesMaintenance: isProUnlocked)
+        // 妊娠中モードの間は目標を渡さない（ウィジェットは最新の体重と最近の記録だけ。「妊娠」「○ 週」は出さない）
+        let pregnancyState = PregnancyModeResolver.state(
+            plans: pregnancyPlans, profile: profiles.first, goal: goals.first, resumedEndedAt: resumedGoalEndedAt
+        )
+        let goal = pregnancyState.usesGoal ? goals.first?.dashboardGoal(includesMaintenance: isProUnlocked) : nil
         let profile = profiles.first?.dashboardProfile
         return content
             .task(id: Trigger(points: points, goal: goal, profile: profile, isProUnlocked: isProUnlocked, isActive: scenePhase == .active)) {

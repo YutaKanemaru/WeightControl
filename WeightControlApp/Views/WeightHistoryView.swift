@@ -20,6 +20,10 @@ struct WeightHistoryView: View {
     @Query(sort: \WeightEntry.date, order: .reverse) private var entries: [WeightEntry]
     /// 目標（増減の色づけに、減らしたいのか増やしたいのかを使う）。1 件だけの想定なので新しい順の先頭を使う。
     @Query(sort: \WeightGoal.startDate, order: .reverse) private var goals: [WeightGoal]
+    /// 妊娠中モードの間は、増えても減ってもグレーにする（「増えた＝悪い」と見せないため。docs/PREGNANCY_MODE.md）
+    @Query private var pregnancyPlans: [PregnancyPlan]
+    @Query private var profiles: [UserProfile]
+    @AppStorage(PregnancyPreferenceKey.resumedGoalEndedAt) private var resumedGoalEndedAt = 0.0
 
     /// 入力画面を出しているかどうか。`@State` は「この画面が覚えておく値」です。
     @State private var isShowingAddSheet = false
@@ -116,6 +120,10 @@ struct WeightHistoryView: View {
     /// 目標の向き。目標がなければ nil（増減に色を付けない）。
     private var goalDirection: GoalDirection? {
         guard let goal = goals.first else { return nil }
+        let pregnancyState = PregnancyModeResolver.state(
+            plans: pregnancyPlans, profile: profiles.first, goal: goal, resumedEndedAt: resumedGoalEndedAt
+        )
+        guard pregnancyState.usesGoal else { return nil }
         // 目標を決めたときの体重がなければ、いちばん古い記録をスタートとみなす（ホームと同じ考え方）
         guard let startKg = goal.startWeightKg ?? entries.last?.weightKg else { return nil }
         return HomeDashboardBuilder.goalDirection(startKg: startKg, targetKg: goal.targetWeightKg)
@@ -279,7 +287,7 @@ struct WeightChangeLabel: View {
 @MainActor
 private func historyPreviewContainer(days: Int = 40, goalKg: Double? = 62) -> ModelContainer {
     let container = try! ModelContainer(
-        for: WeightEntry.self, UserProfile.self, WeightGoal.self, ExerciseDay.self,
+        for: WeightEntry.self, UserProfile.self, WeightGoal.self, ExerciseDay.self, PregnancyPlan.self,
         configurations: ModelConfiguration(isStoredInMemoryOnly: true)
     )
     let context = container.mainContext
@@ -328,11 +336,11 @@ private func historyPreviewContainer(days: Int = 40, goalKg: Double? = 62) -> Mo
 
 #Preview("記録なし") {
     WeightHistoryView()
-        .modelContainer(for: [WeightEntry.self, WeightGoal.self], inMemory: true)
+        .modelContainer(for: [WeightEntry.self, WeightGoal.self, UserProfile.self, PregnancyPlan.self], inMemory: true)
 }
 
 #Preview("記録なし・ダークモード") {
     WeightHistoryView()
-        .modelContainer(for: [WeightEntry.self, WeightGoal.self], inMemory: true)
+        .modelContainer(for: [WeightEntry.self, WeightGoal.self, UserProfile.self, PregnancyPlan.self], inMemory: true)
         .preferredColorScheme(.dark)
 }

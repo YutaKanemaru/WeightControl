@@ -67,6 +67,7 @@ enum DemoDataLoader {
         deleteAll(WeightGoal.self, in: context)
         deleteAll(ExerciseDay.self, in: context)
         deleteAll(CheatDay.self, in: context)
+        deleteAll(PregnancyPlan.self, in: context)
 
         for point in dataSet.points {
             context.insert(WeightEntry(date: point.date, weightKg: point.weightKg))

@@ -16,6 +16,10 @@ struct HomeView: View {
     @Query(sort: \WeightGoal.startDate, order: .reverse) private var goals: [WeightGoal]
     /// 決めたチートデー（Pro）。提案の「週 2 日まで」と、今日がチートデーかの判断に使う。
     @Query(sort: \CheatDay.date) private var cheatDays: [CheatDay]
+    /// 妊娠中モード（docs/PREGNANCY_MODE.md）。モード中は、減量のための機能をすべて止めて、増え方の目安を出す
+    @Query(sort: \PregnancyPlan.startedAt, order: .reverse) private var pregnancyPlans: [PregnancyPlan]
+    @AppStorage(PregnancyPreferenceKey.resumedGoalEndedAt) private var resumedGoalEndedAt = 0.0
+    @AppStorage(PregnancyPreferenceKey.checkInDismissedDueDate) private var checkInDismissedDueDate = 0.0
 
     /// ヘルスケア連携の係。連携していて運動データがあれば、消費カロリーの計算に実績を使う。
     @Environment(HealthSyncController.self) private var health: HealthSyncController?
@@ -30,7 +34,77 @@ struct HomeView: View {
     private static let foods: [FoodItem] = (try? FoodCatalog.loadBundledFoods()) ?? []
 
     var body: some View {
-        let goal = goals.first
+        let pregnancyState = PregnancyModeResolver.state(
+            plans: pregnancyPlans, profile: profiles.first, goal: goals.first, resumedEndedAt: resumedGoalEndedAt
+        )
+        NavigationStack {
+            ScrollView {
+                VStack(spacing: 16) {
+                    if pregnancyState == .active, let plan = pregnancyPlans.activePlan {
+                        pregnancyContent(plan: plan)
+                    } else {
+                        regularContent(usesGoal: pregnancyState.usesGoal)
+                    }
+                }
+                .padding()
+            }
+            .navigationTitle("ホーム")
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        isShowingAddSheet = true
+                    } label: {
+                        Label("体重を記録する", systemImage: "plus")
+                    }
+                }
+            }
+            .sheet(isPresented: $isShowingAddSheet) {
+                AddWeightEntryView(
+                    lastWeightKg: entries.first?.weightKg,
+                    lastEntryDate: entries.first?.date,
+                    existingDates: entries.map(\.date)
+                )
+            }
+        }
+    }
+
+    // MARK: - 妊娠中モード
+
+    /// 妊娠中モードのホーム。目標・予測・カロリー・チートデー・キープモード・食べ物ヒントは出さない。
+    @ViewBuilder
+    private func pregnancyContent(plan: PregnancyPlan) -> some View {
+        let points = entries.map { WeightPoint(date: $0.date, weightKg: $0.weightKg) }
+        let dashboard = plan.dashboard(points: points, heightCm: profiles.first?.heightCm ?? 0)
+        let start = GestationalAgeCalculator.startDate(dueDate: plan.dueDate)
+        let measured = WeightTrendCalculator.dailyAverages(points.filter { $0.date >= start })
+
+        if dashboard.isPastDueCheckIn, checkInDismissedDueDate != plan.dueDate.timeIntervalSinceReferenceDate {
+            PregnancyCheckInCard(plan: plan) {
+                checkInDismissedDueDate = plan.dueDate.timeIntervalSinceReferenceDate
+            }
+        }
+
+        PregnancySummaryCard(dashboard: dashboard, latestDate: entries.first?.date)
+
+        if entries.isEmpty {
+            EmptyRecordsCard { isShowingAddSheet = true }
+        } else {
+            PregnancyPraiseCard(streakDays: dashboard.streakDays, recentRecordedDays: dashboard.recentRecordedDays)
+        }
+
+        PregnancyChartCard(dashboard: dashboard, measured: measured, dueDate: plan.dueDate)
+        PregnancyStatusCard(dashboard: dashboard)
+        PregnancyNutritionCard(trimester: dashboard.age.trimester)
+        PregnancyDisclaimerText()
+    }
+
+    // MARK: - ふだんのホーム
+
+    /// - Parameter usesGoal: 目標を使うか（妊娠中モードを終えたあと、前の目標を一時停止しているときは false）
+    @ViewBuilder
+    private func regularContent(usesGoal: Bool) -> some View {
+        let storedGoal = goals.first
+        let goal = usesGoal ? storedGoal : nil
         let proStatus = pro?.status() ?? .trialAvailable
         let isProUnlocked = proStatus.isUnlocked
         // Pro の計算はいつも行い、使えないときは画面でぼかす（「提案があります」のように、項目があることは見せるため）。
@@ -47,9 +121,12 @@ struct HomeView: View {
             now: .now
         )
 
-        NavigationStack {
-            ScrollView {
-                VStack(spacing: 16) {
+                    if let storedGoal, !usesGoal {
+                        PregnancyEndedGoalCard(goal: storedGoal, currentWeightKg: entries.first?.weightKg) {
+                            resumedGoalEndedAt = PregnancyModeResolver.lastEndedAtValue(plans: pregnancyPlans)
+                        }
+                    }
+
                     if ProTrialCard.isVisible(status: proStatus, isOfferDismissed: isTrialOfferDismissed) {
                         ProTrialCard(status: proStatus)
                     }
@@ -101,11 +178,12 @@ struct HomeView: View {
                         if let goalBMI = dashboard.goalBMI, goalBMI.needsHomeAttention {
                             GoalBMICard(advice: goalBMI, goal: goal, currentWeightKg: entries.first?.weightKg)
                         }
-                    } else {
+                    } else if usesGoal {
                         GoalPromptCard(currentWeightKg: entries.first?.weightKg)
                     }
 
-                    if let intake = dashboard.intake {
+                    // 妊娠中モードを終えたあと、目標を一時停止している間は、カロリーの目安も出さない
+                    if usesGoal, let intake = dashboard.intake {
                         IntakeCard(
                             intake: intake,
                             energyChoice: dashboard.energyChoice,
@@ -126,7 +204,7 @@ struct HomeView: View {
                         }
                     }
 
-                    if let phrase = dashboard.calorieHint?.foodPhrase, let overPlan = dashboard.overPlanKcalPerDay {
+                    if usesGoal, let phrase = dashboard.calorieHint?.foodPhrase, let overPlan = dashboard.overPlanKcalPerDay {
                         FoodHintCard(foodPhrase: phrase, overPlanKcalPerDay: overPlan)
                     }
 
@@ -134,27 +212,6 @@ struct HomeView: View {
                         .font(.caption2)
                         .foregroundStyle(.secondary)
                         .frame(maxWidth: .infinity, alignment: .leading)
-                }
-                .padding()
-            }
-            .navigationTitle("ホーム")
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button {
-                        isShowingAddSheet = true
-                    } label: {
-                        Label("体重を記録する", systemImage: "plus")
-                    }
-                }
-            }
-            .sheet(isPresented: $isShowingAddSheet) {
-                AddWeightEntryView(
-                    lastWeightKg: entries.first?.weightKg,
-                    lastEntryDate: entries.first?.date,
-                    existingDates: entries.map(\.date)
-                )
-            }
-        }
     }
 
     /// 「目標まで」。目標がなければ nil。
@@ -183,7 +240,7 @@ private func homePreviewContainer(
     isFlat: Bool = false
 ) -> ModelContainer {
     let container = try! ModelContainer(
-        for: WeightEntry.self, UserProfile.self, WeightGoal.self, ExerciseDay.self, CheatDay.self,
+        for: WeightEntry.self, UserProfile.self, WeightGoal.self, ExerciseDay.self, CheatDay.self, PregnancyPlan.self,
         configurations: ModelConfiguration(isStoredInMemoryOnly: true)
     )
     let context = container.mainContext
@@ -252,6 +309,27 @@ private func homePreviewContainer(
         .modelContainer(homePreviewContainer(goalKg: 55, deadlineMonths: 1))
 }
 
+#Preview("妊娠中モード") {
+    let container = homePreviewContainer(goalKg: 62)
+    let context = container.mainContext
+    let profile = try! context.fetch(FetchDescriptor<UserProfile>()).first!
+    profile.sex = .female
+    profile.heightCm = 160
+    context.insert(PregnancyPlan(dueDate: Calendar.current.date(byAdding: .day, value: 120, to: .now)!, prePregnancyWeightKg: 60))
+    return HomeView()
+        .modelContainer(container)
+}
+
+#Preview("妊娠中モードを終えたあと（目標を一時停止）") {
+    let container = homePreviewContainer(goalKg: 62)
+    let context = container.mainContext
+    let profile = try! context.fetch(FetchDescriptor<UserProfile>()).first!
+    profile.sex = .female
+    context.insert(PregnancyPlan(dueDate: .now, prePregnancyWeightKg: 60, startedAt: .distantPast, endedAt: .now))
+    return HomeView()
+        .modelContainer(container)
+}
+
 #Preview("キープモード（Pro）") {
     let container = homePreviewContainer(goalKg: 64)
     let goal = try! container.mainContext.fetch(FetchDescriptor<WeightGoal>()).first!
@@ -273,11 +351,11 @@ private func homePreviewContainer(
 
 #Preview("記録なし") {
     HomeView()
-        .modelContainer(for: [WeightEntry.self, UserProfile.self, WeightGoal.self, ExerciseDay.self, CheatDay.self], inMemory: true)
+        .modelContainer(for: [WeightEntry.self, UserProfile.self, WeightGoal.self, ExerciseDay.self, CheatDay.self, PregnancyPlan.self], inMemory: true)
 }
 
 #Preview("記録なし・ダークモード") {
     HomeView()
-        .modelContainer(for: [WeightEntry.self, UserProfile.self, WeightGoal.self, ExerciseDay.self, CheatDay.self], inMemory: true)
+        .modelContainer(for: [WeightEntry.self, UserProfile.self, WeightGoal.self, ExerciseDay.self, CheatDay.self, PregnancyPlan.self], inMemory: true)
         .preferredColorScheme(.dark)
 }
