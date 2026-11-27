@@ -38,7 +38,7 @@ struct DemoDataSection: View {
         } header: {
             Text("開発用：デモデータ")
         } footer: {
-            Text("今の記録・プロフィール・目標・運動スタンプ・チートデーをすべて消して、デモデータに置きかえます。Debug ビルドだけに表示されます。")
+            Text("今の記録・プロフィール・目標・運動スタンプ・チートデー・妊娠中モードの設定をすべて消して、デモデータに置きかえます。Debug ビルドだけに表示されます。")
         }
         .confirmationDialog(
             "今のデータを消して、デモデータを読み込みますか？",
@@ -67,6 +67,7 @@ enum DemoDataLoader {
         deleteAll(WeightGoal.self, in: context)
         deleteAll(ExerciseDay.self, in: context)
         deleteAll(CheatDay.self, in: context)
+        deleteAll(PregnancyPlan.self, in: context)
 
         for point in dataSet.points {
             context.insert(WeightEntry(date: point.date, weightKg: point.weightKg))
@@ -101,6 +102,14 @@ enum DemoDataLoader {
             maintenanceStartDate: dataSet.goal.maintenanceStartDate,
             maintenanceHalfWidthKg: dataSet.goal.maintenanceHalfWidthKg
         ))
+
+        if let pregnancy = dataSet.pregnancy {
+            context.insert(PregnancyPlan(
+                dueDate: pregnancy.dueDate,
+                prePregnancyWeightKg: pregnancy.prePregnancyWeightKg,
+                startedAt: dataSet.goalStartDate.addingTimeInterval(60)
+            ))
+        }
 
         try? context.save()
     }

@@ -26,7 +26,7 @@
 | `WeightControlApp/App/` | `@main` のアプリ本体、ModelContainer の設定 | 小さく保つ |
 | `WeightControlApp/Models/` | `@Model` のデータ型 | 保存する「形」だけ。計算は Logic へ |
 | `WeightControlApp/Views/` | SwiftUI の画面・部品（共通の見た目の部品は `Views/Components/`） | 計算ロジックを直接書かない |
-| `WeightControlApp/Logic/` | 予測（実測体重への線形回帰。EMA はほめるメッセージ用）、カロリー計算（Mifflin-St Jeor）、メッセージ生成など。`Food/`・`Messages/`・`Calendar/`・`Health/`・`Reminders/`・`History/`・`Pro/`・`Maintenance/`・`Widget/`・`Demo/` のサブフォルダあり | **SwiftUI / SwiftData に依存しない純粋な関数・struct**（`nonisolated` を付ける）。必ずテストを書く |
+| `WeightControlApp/Logic/` | 予測（実測体重への線形回帰。EMA はほめるメッセージ用）、カロリー計算（Mifflin-St Jeor）、メッセージ生成など。`Food/`・`Messages/`・`Calendar/`・`Health/`・`Reminders/`・`History/`・`Pro/`・`Maintenance/`・`Widget/`・`Pregnancy/`・`Demo/` のサブフォルダあり | **SwiftUI / SwiftData に依存しない純粋な関数・struct**（`nonisolated` を付ける）。必ずテストを書く |
 | `WeightControlApp/Services/` | HealthKit・通知（UserNotifications）など、外の仕組みとやり取りする窓口と、その結果を SwiftData に反映する係 | 外の型（`HKQuantitySample` など）はここで値の型に変換し、判断のルールは `Logic/` に置いてテストする |
 | `WeightControlApp/Resources/` | アプリに同梱するデータ（`FoodCalories.json`） | 数値の修正はコードではなく JSON で |
 | `Shared/` | アプリ・ウィジェット・Watch アプリ・コンプリケーションのすべてに入るファイル（`WidgetSnapshot`、Watch とやりとりする `WatchWeightRecord` など） | Foundation だけを使い、`nonisolated` を付ける。Logic・Models の型は使えない（ウィジェットと Watch に入っていないため）。テストはアプリ側のテストで書く |
@@ -69,6 +69,7 @@ Apple の「ワークアウト」アプリのような、**シンプルで、運
 - キープモード（ロードマップでは「維持モード」。Pro 機能）：目標に届いたあと、目標 ±1.5 kg（設定で ±1.0/2.0）の範囲にキープする。判断は `Logic/Maintenance/MaintenanceAdvisor`、モード中かどうかは `WeightGoal.maintenanceStartDate`（nil でなければモード中）。目標達成のカードのボタンで始め、新しい目標を保存したら終わる。モード中は予測・修正案・見込みの幅・チートデーを出さない。無料版の人には目標達成のときに Pro の案内を出す。仕様は `docs/MAINTENANCE_MODE.md`。
 - 目標の期限はアプリが提案する（ゆるやか＝週に体重の 0.5 %・ハード＝1 %、食事の下限でも止める。「自分で決める」も残す）。仕様は `docs/GOAL_DEADLINE.md`。
 - ウィジェット（フェーズ 16、無料）：アプリが `WidgetSnapshotBuilder` で表示用の数字（ホームと同じ値）を作り、App Group（`group.com.utahengineering.weightforecast`）の `UserDefaults` に保存して `WidgetCenter` で描き直しを頼む（`Views/WidgetSnapshotSync`）。ウィジェットはそれを読むだけで、SwiftData は共有しない。仕様は `docs/WIDGET.md`。ホームの「目標まで」などの計算を変えたら、ウィジェットにも同じ値が出ることを確かめる。
+- 妊娠中モード（フェーズ 17、無料）：性別が女性で本人がオンにしたときだけ。妊娠前の BMI で日本産科婦人科学会 2021 の目安（12〜15 / 10〜13 / 7〜10 kg / 30 以上は個別）を選び、週ごとの帯は `PregnancyBandBuilder`（初期 0〜2 kg、そのあと直線。アプリの決まり）。健診で言われた目安を入れたらそちらを優先。判断は `Logic/Pregnancy/PregnancyAdvisor`、設定は `Models/PregnancyPlan`（`endedAt` が nil ならモード中）。モード中と、終えたあと目標を一時停止している間（`PregnancyModeState`）は、目標・予測・カロリーの目安・食べ物ヒント・チートデー・キープモード・目標の節目の通知を止め、履歴の色はグレー、ウィジェットに目標を出さない。通知・ウィジェットに「妊娠」という言葉は出さない。ほめるのは記録を続けたことだけ（体重が減ったことはほめない）。仕様は `docs/PREGNANCY_MODE.md`。新しい機能を足すときは、妊娠中モードで止めるべきかを考える。
 - Apple Watch（フェーズ 10、無料）：iPhone がウィジェットと同じスナップショットを WatchConnectivity（`Services/WatchSyncService`）で Watch に送り、Watch で記録した体重は iPhone が `WeightEntry` に足す（重複と範囲の判断は `Logic/Watch/WatchRecordImportPlanner`）。Watch は計算しない。仕様は `docs/WATCH.md`。Watch の記録のルール（範囲・0.1 kg 刻み・2.0 kg の確認）は `Shared/WatchDisplay` にも置いていて、iPhone 側と同じ値かをテストで確かめている。
 - ロジックの入力は `SwiftData` の型ではなく `WeightPoint` などの値の型を使う。カロリー計算の `BiologicalSex` / `ActivityLevel` は `UserProfile.Sex` / `UserProfile.ActivityLevel` とは別の型なので、画面側で変換する。
 

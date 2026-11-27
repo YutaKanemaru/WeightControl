@@ -15,11 +15,18 @@ struct SettingsView: View {
     @Environment(HealthSyncController.self) private var health: HealthSyncController?
     /// Pro を使えるか（キープモードの欄を出すため）
     @Environment(ProAccess.self) private var pro: ProAccess?
+    /// 妊娠中モード（docs/PREGNANCY_MODE.md）
+    @Query(sort: \PregnancyPlan.startedAt, order: .reverse) private var pregnancyPlans: [PregnancyPlan]
+    @AppStorage(PregnancyPreferenceKey.resumedGoalEndedAt) private var resumedGoalEndedAt = 0.0
 
     var body: some View {
         NavigationStack {
             List {
                 goalSection
+                // 妊娠中モードは、性別が女性の人にだけ出す
+                if let profile = profiles.first, profile.sex == .female {
+                    PregnancySettingsSection(heightCm: profile.heightCm)
+                }
                 profileSection
                 energySection
                 ReminderSettingsSection()
@@ -41,6 +48,14 @@ struct SettingsView: View {
     @ViewBuilder
     private var goalSection: some View {
         Section {
+            switch pregnancyState {
+            case .active:
+                NoticeLabel("妊娠中モードの間は、目標は使われません。モードを終えたら、立て直せます。")
+            case .goalPausedAfterPregnancy:
+                NoticeLabel("妊娠中モードを終えたので、目標を一時停止しています。新しい目標を決めるか、ホームの「前の目標に戻す」で再開できます。")
+            case .off:
+                EmptyView()
+            }
             if let goal = goals.first, isProUnlocked, goal.isInMaintenance {
                 MaintenanceSettingsRows(goal: goal, currentWeightKg: entries.first?.weightKg, heightCm: profiles.first?.heightCm)
             } else if let goal = goals.first {
@@ -50,7 +65,7 @@ struct SettingsView: View {
                     goalSummary(goal)
                 }
                 .accessibilityHint(Text("目標を変更します"))
-                if isProUnlocked {
+                if isProUnlocked, pregnancyState.usesGoal {
                     Button {
                         let points = entries.map { WeightPoint(date: $0.date, weightKg: $0.weightKg) }
                         let center = HomeDashboardBuilder.currentWeightEstimate(points: points)
@@ -88,6 +103,10 @@ struct SettingsView: View {
     }
 
     private var isProUnlocked: Bool { pro?.isUnlocked ?? false }
+
+    private var pregnancyState: PregnancyModeState {
+        PregnancyModeResolver.state(plans: pregnancyPlans, profile: profiles.first, goal: goals.first, resumedEndedAt: resumedGoalEndedAt)
+    }
 
     /// 目標体重と、期限までの日数を大きく並べる
     private func goalSummary(_ goal: WeightGoal) -> some View {

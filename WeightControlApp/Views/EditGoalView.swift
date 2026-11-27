@@ -14,6 +14,9 @@ struct EditGoalView: View {
     @Query private var profiles: [UserProfile]
     /// 消費カロリーの目安にヘルスケアの運動量を使うため（プレビューなどで渡されていないときは nil）
     @Environment(HealthSyncController.self) private var health: HealthSyncController?
+    /// 妊娠中モードを終えたあとに目標を保存したら、目標の一時停止を終えるため（docs/PREGNANCY_MODE.md）
+    @Query private var pregnancyPlans: [PregnancyPlan]
+    @AppStorage(PregnancyPreferenceKey.resumedGoalEndedAt) private var resumedGoalEndedAt = 0.0
 
     /// 編集する目標。nil のときは新しく作る。
     let goal: WeightGoal?
@@ -125,6 +128,8 @@ struct EditGoalView: View {
                 paceModeRawValue: draft.mode.rawValue
             ))
         }
+        // 妊娠中モードを終えたあとなら、目標を立て直したので一時停止を終える
+        resumedGoalEndedAt = PregnancyModeResolver.lastEndedAtValue(plans: pregnancyPlans)
         dismiss()
     }
 

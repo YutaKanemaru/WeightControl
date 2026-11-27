@@ -14,6 +14,9 @@ struct WeighInReminderSync: ViewModifier {
     @Query private var profiles: [UserProfile]
     /// Pro を使えるか（使えないときは、キープモードのお知らせを出さない）
     @Environment(ProAccess.self) private var pro: ProAccess?
+    /// 妊娠中モード（モード中と、終えたあと目標を一時停止している間は、目標を使わない。docs/PREGNANCY_MODE.md）
+    @Query private var pregnancyPlans: [PregnancyPlan]
+    @AppStorage(PregnancyPreferenceKey.resumedGoalEndedAt) private var resumedGoalEndedAt = 0.0
     /// アプリが前面にあるか、裏に回ったか（scenePhase）。前面に戻るたびに日付が変わっている可能性があるので作り直す
     @Environment(\.scenePhase) private var scenePhase
 
@@ -40,8 +43,13 @@ struct WeighInReminderSync: ViewModifier {
     }
 
     /// ほめる通知に渡す目標。Pro を使えないときは、キープモードの情報を外す
+    /// 妊娠中モードの間は目標を渡さない（目標の節目のお祝いを出さず、ふり返りは記録した日数だけにする。通知に「妊娠」は出さない）
     private var praiseGoal: DashboardGoal? {
-        goals.first?.dashboardGoal(includesMaintenance: pro?.isUnlocked ?? false)
+        let state = PregnancyModeResolver.state(
+            plans: pregnancyPlans, profile: profiles.first, goal: goals.first, resumedEndedAt: resumedGoalEndedAt
+        )
+        guard state.usesGoal else { return nil }
+        return goals.first?.dashboardGoal(includesMaintenance: pro?.isUnlocked ?? false)
     }
 
     func body(content: Content) -> some View {

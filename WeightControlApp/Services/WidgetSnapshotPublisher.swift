@@ -22,8 +22,18 @@ enum WidgetSnapshotPublisher {
         let goals = (try? context.fetch(FetchDescriptor<WeightGoal>(sortBy: [SortDescriptor(\.startDate, order: .reverse)]))) ?? []
         let profiles = (try? context.fetch(FetchDescriptor<UserProfile>())) ?? []
 
+        let plans = (try? context.fetch(FetchDescriptor<PregnancyPlan>())) ?? []
+
         let points = entries.map { WeightPoint(date: $0.date, weightKg: $0.weightKg) }
-        let goal = goals.first?.dashboardGoal(includesMaintenance: isProUnlocked)
+        // 妊娠中モードの間（と、終えたあと目標を一時停止している間）は目標を渡さない。
+        // ウィジェットと Watch には最新の体重と最近の記録だけを出し、「妊娠」「○ 週」は出さない（docs/PREGNANCY_MODE.md）
+        let pregnancyState = PregnancyModeResolver.state(
+            plans: plans,
+            profile: profiles.first,
+            goal: goals.first,
+            resumedEndedAt: UserDefaults.standard.double(forKey: PregnancyPreferenceKey.resumedGoalEndedAt)
+        )
+        let goal = pregnancyState.usesGoal ? goals.first?.dashboardGoal(includesMaintenance: isProUnlocked) : nil
         // ホームと同じ計算で「今の体重の目安」などを出す（食べ物ヒントや運動量は使わないので渡さない）
         let dashboard = HomeDashboardBuilder.build(
             points: points,
