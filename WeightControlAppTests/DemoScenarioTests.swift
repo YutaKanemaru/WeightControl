@@ -296,4 +296,42 @@ struct DemoScenarioTests {
         #expect(!result.isGoalAchieved)
         #expect(result.forecast != nil)
     }
+
+    // MARK: - ⑥ 妊娠中モード
+
+    @Test("⑥ 妊娠中モード：今日は 24 週 0 日、妊娠前から +4.9 kg、目安の帯（+4.07〜6.48 kg）の中")
+    func pregnancy() throws {
+        let set = DemoScenario.pregnancy.dataSet(today: now, calendar: calendar)
+        let plan = try #require(set.pregnancy)
+        #expect(plan.dueDate == day(112))
+        #expect(plan.prePregnancyWeightKg == 52.0)
+        #expect(DemoScenario.allCases.filter { $0 != .pregnancy }.allSatisfy { $0.dataSet(today: now, calendar: calendar).pregnancy == nil })
+
+        let result = PregnancyAdvisor.evaluate(
+            points: set.points,
+            dueDate: plan.dueDate,
+            prePregnancyWeightKg: plan.prePregnancyWeightKg,
+            heightCm: set.profile.heightCm,
+            isMultiple: false,
+            customLowKg: nil,
+            customHighKg: nil,
+            now: now,
+            calendar: calendar
+        )
+        #expect(result.age.weeks == 24)
+        #expect(result.age.days == 0)
+        #expect(result.age.trimester == .middle)
+        #expect(result.target == .general(PregnancyGainRange(lowKg: 10, highKg: 13), bodyType: .normal))
+        // 大きな数字は最新の記録（56.9 kg）から
+        #expect(isApproximately(try #require(result.latestGainKg), 4.9, tolerance: 1e-9))
+        // 判定は直近 21 日の直線の今日の値（57.13 kg、+5.13 kg）
+        #expect(isApproximately(try #require(result.currentWeightKg), 57.126, tolerance: 0.001))
+        let band = try #require(result.bandToday)
+        #expect(isApproximately(band.lowerGainKg, 4.074, tolerance: 0.001))
+        #expect(isApproximately(band.upperGainKg, 6.481, tolerance: 0.001))
+        #expect(result.status == .withinRange)
+        #expect(!result.showsRapidGainNote)
+        #expect(!result.hasFewRecentRecords)
+        #expect(!result.isPastDueCheckIn)
+    }
 }

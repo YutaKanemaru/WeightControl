@@ -70,7 +70,7 @@ struct PregnancyStartView: View {
                 VStack(alignment: .leading, spacing: 16) {
                     InfoPointRow(
                         title: "健診で言われたことを優先",
-                        detail: "この目安は公的な資料をもとにした一般的なものです。健診で言われた目安があれば、そちらを優先してください。",
+                        detail: "この目安は公的な資料をもとにした一般的なものです。健診で言われた目安があれば、そちらを優先してください。18 歳未満の方は、とくに医師に相談しながら使ってください。",
                         systemImage: "stethoscope"
                     )
                     InfoPointRow(

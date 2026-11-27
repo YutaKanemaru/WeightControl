@@ -20,6 +20,14 @@ nonisolated struct DemoGoal: Equatable, Sendable {
     var maintenanceStartDaysAgo: Int? = nil
 }
 
+/// デモデータで使う妊娠中モードの設定（日付へ当てはめたもの）
+nonisolated struct DemoPregnancy: Equatable, Sendable {
+    /// 出産予定日（その日の 0 時）
+    var dueDate: Date
+    /// 妊娠前の体重（kg）
+    var prePregnancyWeightKg: Double
+}
+
 /// デモデータを「今日」を基準に日付へ当てはめた結果。保存（SwiftData）の形には依存しない、ただの値です。
 nonisolated struct DemoDataSet: Equatable, Sendable {
     /// 体重の記録（古い順。最後が今日）
@@ -32,6 +40,8 @@ nonisolated struct DemoDataSet: Equatable, Sendable {
     var goalStartDate: Date
     /// 運動スタンプを押す日（各日の 0 時）
     var exerciseDays: [Date]
+    /// 妊娠中モードの設定。nil ならモードではない。
+    var pregnancy: DemoPregnancy? = nil
 }
 
 /// 予測・カロリー計算を画面で確かめるための「デモデータ」のシナリオ。
@@ -52,6 +62,8 @@ nonisolated enum DemoScenario: String, CaseIterable, Identifiable, Sendable {
     case fewRecords
     /// キープモード（Pro）。範囲の中だが少しずつ上がっていて「そろそろ端」
     case maintenance
+    /// 妊娠中モード。妊娠 24 週 0 日で、増え方の目安の帯の中
+    case pregnancy
 
     var id: String { rawValue }
 
@@ -66,6 +78,7 @@ nonisolated enum DemoScenario: String, CaseIterable, Identifiable, Sendable {
         case .tooAggressive: String(localized: "③ 目標が速すぎる")
         case .fewRecords: String(localized: "④ 記録が 10 日だけ")
         case .maintenance: String(localized: "⑤ キープモード（Pro）")
+        case .pregnancy: String(localized: "⑥ 妊娠中モード")
         }
     }
 
@@ -77,6 +90,7 @@ nonisolated enum DemoScenario: String, CaseIterable, Identifiable, Sendable {
         case .tooAggressive: String(localized: "21 日分・週 0.4 kg ペースで減少。目標 72 kg・期限 30 日後")
         case .fewRecords: String(localized: "10 日分・週 0.3 kg ペースで減少。目標 57 kg・期限 90 日後")
         case .maintenance: String(localized: "28 日分・55 kg に届いて 21 日前にモード開始、その後少しずつ増加。Pro をオンにして確認")
+        case .pregnancy: String(localized: "28 日分・妊娠前 52 kg（160 cm）から週 0.3 kg ペースで増加。今日が妊娠 24 週 0 日")
         }
     }
 
@@ -110,6 +124,12 @@ nonisolated enum DemoScenario: String, CaseIterable, Identifiable, Sendable {
              55.0, 55.4, 54.9, 55.3, 55.1, 55.5, 55.1,
              55.4, 55.8, 55.3, 55.6, 55.5, 55.9, 55.4,
              55.8, 56.1, 55.6, 56.0, 55.9, 56.2, 55.8]
+        case .pregnancy:
+            // 56.0 kg（妊娠 20 週 1 日）から週 +0.3 kg のペース ＋ 日々のブレ
+            [56.0, 56.3, 55.9, 56.2, 56.1, 56.4, 56.0,
+             56.3, 56.6, 56.2, 56.5, 56.4, 56.7, 56.3,
+             56.6, 56.9, 56.5, 56.8, 56.7, 57.0, 56.6,
+             56.9, 57.2, 56.8, 57.1, 57.0, 57.3, 56.9]
         }
     }
 
@@ -120,6 +140,7 @@ nonisolated enum DemoScenario: String, CaseIterable, Identifiable, Sendable {
         case .tooAggressive: DemoProfile(heightCm: 175, ageYears: 35, sex: .male, activityLevel: .sedentary)
         case .fewRecords: DemoProfile(heightCm: 160, ageYears: 35, sex: .female, activityLevel: .light)
         case .maintenance: DemoProfile(heightCm: 160, ageYears: 35, sex: .female, activityLevel: .light)
+        case .pregnancy: DemoProfile(heightCm: 160, ageYears: 35, sex: .female, activityLevel: .light)
         }
     }
 
@@ -131,6 +152,16 @@ nonisolated enum DemoScenario: String, CaseIterable, Identifiable, Sendable {
         case .fewRecords: DemoGoal(targetWeightKg: 57.0, deadlineDaysFromToday: 90, startWeightKg: 60.0)
         // 期限は目標に届いた日（21 日前）。モード中は期限を使わない
         case .maintenance: DemoGoal(targetWeightKg: 55.0, deadlineDaysFromToday: -21, startWeightKg: 58.0, maintenanceStartDaysAgo: 21)
+        // 妊娠前に決めていた目標（モード中は使わない）
+        case .pregnancy: DemoGoal(targetWeightKg: 50.0, deadlineDaysFromToday: 60, startWeightKg: 52.0)
+        }
+    }
+
+    /// 妊娠中モードの設定：出産予定日（今日から何日後か）と妊娠前の体重（kg）。モードでなければ nil。
+    var pregnancySetup: (dueInDays: Int, prePregnancyWeightKg: Double)? {
+        switch self {
+        case .pregnancy: (dueInDays: 112, prePregnancyWeightKg: 52.0)
+        default: nil
         }
     }
 
@@ -173,7 +204,13 @@ nonisolated enum DemoScenario: String, CaseIterable, Identifiable, Sendable {
                 }
             ),
             goalStartDate: DayMath.date(byAddingDays: firstOffset, to: today, calendar: calendar),
-            exerciseDays: exerciseDays
+            exerciseDays: exerciseDays,
+            pregnancy: pregnancySetup.map {
+                DemoPregnancy(
+                    dueDate: DayMath.date(byAddingDays: $0.dueInDays, to: today, calendar: calendar),
+                    prePregnancyWeightKg: $0.prePregnancyWeightKg
+                )
+            }
         )
     }
 }
