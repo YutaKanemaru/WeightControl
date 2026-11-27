@@ -49,7 +49,11 @@ struct WeightHistoryView: View {
                 }
             }
             .sheet(isPresented: $isShowingAddSheet) {
-                AddWeightEntryView(lastWeightKg: entries.first?.weightKg, lastEntryDate: entries.first?.date)
+                AddWeightEntryView(
+                    lastWeightKg: entries.first?.weightKg,
+                    lastEntryDate: entries.first?.date,
+                    existingDates: entries.map(\.date)
+                )
             }
         }
     }

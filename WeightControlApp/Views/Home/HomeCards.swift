@@ -20,8 +20,8 @@ private let signedKgFormat = FloatingPointFormatStyle<Double>.number
 struct WeightSummaryCard: View {
     let latestKg: Double
     let latestDate: Date
-    /// 目標までの残り（kg）。目標がなければ nil。
-    let remainingKg: Double?
+    /// 「目標まで」（最新の体重から計算）。目標がなければ nil。
+    let goalDistance: GoalDistance?
     let goalWeightKg: Double?
     /// キープモード中ならキープの範囲。そのときは「目標まで」の代わりに範囲を出す。
     var maintenanceRange: MaintenanceRange? = nil
@@ -63,15 +63,36 @@ struct WeightSummaryCard: View {
                 size: .medium,
                 tint: .green
             )
-        } else if let remainingKg, let goalWeightKg {
-            MetricView(
-                "目標まで",
-                value: remainingKg,
-                unit: "kg",
-                caption: Text("目標 \(goalWeightKg, format: kgFormat) kg"),
-                size: .medium,
-                tint: .green
-            )
+        } else if let goalDistance, let goalWeightKg {
+            switch goalDistance {
+            case .toGo(let kg):
+                MetricView(
+                    "目標まで",
+                    value: kg,
+                    unit: "kg",
+                    caption: Text("目標 \(goalWeightKg, format: kgFormat) kg"),
+                    size: .medium,
+                    tint: .green
+                )
+            case .reached:
+                MetricView(
+                    "目標まで",
+                    text: Text("達成"),
+                    caption: Text("目標 \(goalWeightKg, format: kgFormat) kg"),
+                    size: .medium,
+                    tint: .green
+                )
+            case .beyond(let kg, let isBelowGoal):
+                MetricView(
+                    "目標まで",
+                    text: Text("達成"),
+                    caption: isBelowGoal
+                        ? Text("目標 \(goalWeightKg, format: kgFormat) kg より \(kg, format: kgFormat) kg 下")
+                        : Text("目標 \(goalWeightKg, format: kgFormat) kg より \(kg, format: kgFormat) kg 上"),
+                    size: .medium,
+                    tint: .green
+                )
+            }
         }
     }
 }

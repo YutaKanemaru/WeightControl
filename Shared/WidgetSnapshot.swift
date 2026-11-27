@@ -20,7 +20,7 @@ nonisolated struct WidgetSnapshot: Codable, Equatable, Sendable {
     var latestWeightKg: Double?
     /// 最新の記録の日時。記録がなければ nil。
     var latestDate: Date?
-    /// 直近 14 日の記録（1 日 1 件、その日の最後の記録。古い順）
+    /// 直近 14 日の記録（1 日 1 件、同じ日の記録は平均。古い順）
     var recentRecords: [WidgetWeightRecord]
     /// 連続記録日数（作った時点の値）。表示するときは `WidgetDisplay.visibleStreakDays` で途切れていないか確かめる
     var streakDays: Int
@@ -47,11 +47,12 @@ nonisolated struct WidgetGoalSummary: Codable, Equatable, Sendable {
     var targetWeightKg: Double
     /// 期限
     var deadline: Date
-    /// 目標までの残り（kg、いつもプラス）。ホームの「目標まで」と同じ値。計算できなければ nil。
+    /// 目標までの残り（kg、いつもプラス）。ホームの「目標まで」と同じく最新の体重から出した値。
+    /// 届いた（`isAchieved`）とき・記録がないときは nil。
     var remainingKg: Double?
-    /// 進み具合（0 = スタート、1 = 達成）。キープが目標のときなどは nil。
+    /// 進み具合（0 = スタート、1 = 達成）。今の体重の目安から出す。キープが目標のときなどは nil。
     var progress: Double?
-    /// 目標に届いた（か通りこした）か
+    /// 目標に届いた（0.1 kg 以内か、通りこした）か。ホームの「目標まで 達成」と同じ
     var isAchieved: Bool
 }
 

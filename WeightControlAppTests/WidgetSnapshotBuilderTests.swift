@@ -29,7 +29,7 @@ struct WidgetSnapshotBuilderTests {
         #expect(snapshot.maintenance == nil)
     }
 
-    @Test("最新の体重はいちばん新しい記録、目標まではホームと同じ値")
+    @Test("最新の体重はいちばん新しい記録、目標までは最新の体重から（ホームと同じ）")
     func matchesHome() throws {
         // 10 日間、毎日 0.1 kg ずつ減っている。並びはわざとバラバラにする
         let points = (0..<10).map { WeightPoint(date: day($0, hour: 7), weightKg: 70 - Double($0) * 0.1) }.shuffled()
@@ -45,21 +45,32 @@ struct WidgetSnapshotBuilderTests {
         let currentKg = try #require(home.currentWeightKg)
         #expect(summary.targetWeightKg == 65)
         #expect(summary.deadline == day(90))
-        #expect(isApproximately(try #require(summary.remainingKg), abs(65 - currentKg)))
+        // 最新の体重 69.1 kg − 目標 65 kg
+        #expect(isApproximately(try #require(summary.remainingKg), 4.1))
+        // 進み具合は今の体重の目安から
         #expect(isApproximately(try #require(summary.progress), (70 - currentKg) / 5))
         #expect(summary.isAchieved == false)
         #expect(snapshot.maintenance == nil)
     }
 
-    @Test("目標に届いていれば isAchieved、進み具合は 1 で頭打ち")
+    @Test("最新の体重が目標を通りこしたら isAchieved、残りは出さず進み具合は 1")
     func achieved() throws {
         let points = (0..<7).map { WeightPoint(date: day($0), weightKg: 64.5) }
         let goal = DashboardGoal(targetWeightKg: 65, deadline: day(90), startWeightKg: 70)
-        let (snapshot, home) = build(points, goal: goal, now: day(6))
-        #expect(home.isGoalAchieved)
+        let (snapshot, _) = build(points, goal: goal, now: day(6))
         let summary = try #require(snapshot.goal)
         #expect(summary.isAchieved)
+        #expect(summary.remainingKg == nil)
         #expect(summary.progress == 1)
+    }
+
+    @Test("目標との差が 0.1 kg 以内なら達成、1 日だけ通りこしても達成（ホームの「目標まで 達成」と同じ）")
+    func achievedByLatestWeight() throws {
+        var points = (0..<6).map { WeightPoint(date: day($0), weightKg: 66) }
+        points.append(WeightPoint(date: day(6), weightKg: 65.05))
+        let goal = DashboardGoal(targetWeightKg: 65, deadline: day(90), startWeightKg: 70)
+        let (snapshot, _) = build(points, goal: goal, now: day(6))
+        #expect(try #require(snapshot.goal).isAchieved)
     }
 
     @Test("目標を決めたときの体重がなければ、最初の記録から進み具合を出す")
@@ -93,7 +104,7 @@ struct WidgetSnapshotBuilderTests {
 
     // MARK: - 直近 14 日の記録
 
-    @Test("1 日に何回記録しても、その日の最後の記録だけにする")
+    @Test("1 日に何回記録しても、その日の平均で 1 日 1 点にする")
     func lastRecordOfDay() {
         let points = [
             WeightPoint(date: day(5, hour: 21), weightKg: 70.4),
@@ -101,10 +112,9 @@ struct WidgetSnapshotBuilderTests {
             WeightPoint(date: day(6, hour: 7), weightKg: 69.8),
         ]
         let records = WidgetSnapshotBuilder.recentRecords(points: points, now: day(6, hour: 12), calendar: calendar)
-        #expect(records == [
-            WidgetWeightRecord(date: day(5, hour: 21), weightKg: 70.4),
-            WidgetWeightRecord(date: day(6, hour: 7), weightKg: 69.8),
-        ])
+        #expect(records.map(\.date) == [day(5), day(6)])
+        #expect(isApproximately(records[0].weightKg, 70.2))
+        #expect(isApproximately(records[1].weightKg, 69.8))
     }
 
     @Test("今日を含む直近 14 日だけ。15 日前と未来の記録は入れない")
