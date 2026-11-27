@@ -33,6 +33,18 @@ jobs:
           fi
           xcodebuild -version
 
+      # iPhone アプリの中に Apple Watch アプリが入っているので、iPhone アプリをビルドすると Watch アプリもビルドされる。
+      # そのための watchOS の部品（SDK）が CI の Mac に入っていなければ入れる（docs/WATCH.md の「CI について」）
+      - name: watchOS の部品があるか確かめる
+        run: |
+          if xcodebuild -showsdks | grep -q watchsimulator; then
+            echo "watchOS の SDK は入っています"
+          else
+            echo "watchOS の部品を入れます"
+            xcodebuild -downloadPlatform watchOS
+          fi
+          xcodebuild -showsdks
+
       - name: テスト用の iPhone シミュレーターを選ぶ
         id: sim
         run: |

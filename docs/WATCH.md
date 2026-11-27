@@ -2,7 +2,7 @@
 
 手首から **すぐ体重を記録できて**、**目標まであと何 kg か・期限まであと何日か** をひと目で見られるようにします。文字盤には **コンプリケーション**（文字盤の小さな表示欄）も置けます。
 
-この文書は作る前の仕様です。作るときに変わったら、この文書も同じ PR で直します。
+仕様は #37、実装は #38。作るときに変わったら、この文書も同じ PR で直します。
 
 ## 最初の版でできること
 
@@ -84,6 +84,12 @@ iPhone アプリ                                Watch アプリ
   - `date`（Watch で「記録する」を押した日時）
   - `weightKg`（kg、小数 1 桁）
 
+### 「受け取りました」の返し方
+
+iPhone は、スナップショットといっしょに **受け取り済みの記録の ID**（新しいほうから 20 件）を送ります。`sendMessage` の返事にも同じものを入れます。Watch はこの ID を見て、送信待ちから消します（`WatchDisplay.remainingPending`）。iPhone が範囲外ではじいた記録も「受け取り済み」に入れるので、送信待ちがずっと残ることはありません。念のため、7 日より古い送信待ちも表示から外します。
+
+Watch アプリを開いて iPhone とつながったときは、まだ届いていない送信待ちを `transferUserInfo` でもう一度送ります（iPhone は同じ ID を足さないので、2 回届いても大丈夫）。
+
 ### 同じ記録を 2 回足さない
 
 `sendMessage` が届いたのに返事だけ失敗した場合などに、同じ記録が `transferUserInfo` でもう一度届くことがあります。iPhone は、受け取った記録の `id` を覚えておき（最近の 200 件。`UserDefaults`）、同じ `id` は足しません。この判断は `Logic/Watch/WatchRecordImportPlanner` に置いてテストします（体重の範囲のチェックも、iPhone の入力と同じルールで行う）。
@@ -92,7 +98,7 @@ iPhone アプリ                                Watch アプリ
 
 - 送った記録が iPhone に届くまでは、その体重を「最新の体重」として出し、小さく「iPhone に送信待ち」と出します。
 - 「目標まで」「期限まで」は、iPhone から新しいスナップショットが届くまで前の値のままです（Watch では計算しないため。近くに iPhone があれば 1 秒ほどで新しい値になります）。
-- iPhone から届いたスナップショットの最新の記録が、送信待ちの記録と同じ（またはそれより新しい）なら、送信待ちから消します。
+- iPhone から「受け取りました」（上の ID）が届いたら、送信待ちから消します。
 
 ## 画面の見た目
 
@@ -117,8 +123,8 @@ CLAUDE.md の「UI の見た目の方針」と同じです。
 - `Shared/` は 4 つのターゲット（iPhone アプリ・ウィジェット・Watch アプリ・コンプリケーション）すべてに入れます。ここに `WatchWeightRecord` と、Watch 側の表示のルール（送信待ちの扱い、Digital Crown の 0.1 kg 刻み、2.0 kg の確認）を Foundation だけで置き、テストはアプリ側のテストで書きます。
 - コンプリケーションと Watch アプリは、Watch の中の App Group（`group.com.utahengineering.weightforecast`、iPhone と同じ名前でよい。Watch の中だけの共有の引き出しになる）でスナップショットを分け合います。読み書きは `WidgetSnapshotStore` をそのまま使います。
 - iPhone 側：
-  - `Services/WatchSyncService`：`WCSession` の窓口。スナップショットを送り、届いた記録を SwiftData に足す。
-  - スナップショットを作る処理を、画面（`WidgetSnapshotSync`）から呼べるだけでなく、Watch から記録が届いたとき（アプリが裏で起こされたとき）にも呼べる形に整理する。ウィジェットへの保存と Watch への送信を同じ場所で行う。
+  - `Services/WatchSyncService`：`WCSession` の窓口。スナップショットを送り、届いた記録を SwiftData に足す。Watch から記録が届くとアプリが裏で起こされることがあるので、画面より先に、アプリの起動時（`WeightControlAppApp` の init）に作って動かす。
+  - `Services/WidgetSnapshotPublisher.publish(context:isProUnlocked:)`：スナップショットを `ModelContext` から作り、ウィジェットへの保存と Watch への送信を同じ場所で行う。画面（`WidgetSnapshotSync`）からも、Watch から記録が届いたときも、これを呼ぶ。
   - `Logic/Watch/WatchRecordImportPlanner`：重複と範囲のチェック（テストあり）。
 - ヘルスケアへの書き込みは iPhone が行うので、Watch アプリはヘルスケアの許可を求めません。
 
