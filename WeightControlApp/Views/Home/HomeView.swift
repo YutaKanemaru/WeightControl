@@ -58,7 +58,7 @@ struct HomeView: View {
                         WeightSummaryCard(
                             latestKg: latest.weightKg,
                             latestDate: latest.date,
-                            remainingKg: remainingKg(dashboard: dashboard, goal: goal),
+                            goalDistance: goalDistance(latestKg: latest.weightKg, goal: goal),
                             goalWeightKg: goal?.targetWeightKg,
                             maintenanceRange: dashboard.maintenance?.range
                         )
@@ -148,18 +148,27 @@ struct HomeView: View {
                 }
             }
             .sheet(isPresented: $isShowingAddSheet) {
-                AddWeightEntryView(lastWeightKg: entries.first?.weightKg, lastEntryDate: entries.first?.date)
+                AddWeightEntryView(
+                    lastWeightKg: entries.first?.weightKg,
+                    lastEntryDate: entries.first?.date,
+                    existingDates: entries.map(\.date)
+                )
             }
         }
     }
 
-    /// 目標までの残り（kg）。目標や記録がなければ nil。
+    /// 「目標まで」。目標がなければ nil。
     ///
-    /// 日によって増えたり減ったりしないよう、測った体重そのものではなく、
-    /// 直近 3 週間の体重に引いた直線の今日の値（今の体重の目安）から計算します。
-    private func remainingKg(dashboard: HomeDashboard, goal: WeightGoal?) -> Double? {
-        guard let goal, let currentKg = dashboard.currentWeightKg else { return nil }
-        return abs(goal.targetWeightKg - currentKg)
+    /// カードの大きな数字（最新の体重）と同じ基準にするため、測った体重そのものから計算します
+    /// （docs/WEIGHT_RECORDS.md）。予報やカロリーは、今までどおり直線の今日の値（`dashboard.currentWeightKg`）を使います。
+    /// 目標の向きは、目標を決めたときの体重（なければいちばん古い記録）で決めます。
+    private func goalDistance(latestKg: Double, goal: WeightGoal?) -> GoalDistance? {
+        guard let goal else { return nil }
+        return GoalDistanceCalculator.distance(
+            latestKg: latestKg,
+            targetKg: goal.targetWeightKg,
+            startKg: goal.startWeightKg ?? entries.last?.weightKg
+        )
     }
 }
 
