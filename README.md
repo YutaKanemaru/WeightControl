@@ -27,6 +27,7 @@
 | ほめる通知（日曜の夜に 1 週間のふり返り、連続記録や目標の 25/50/75/100% のお祝い） | ✅ |
 | 画面の作り直し（ワークアウトアプリのような、大きな数字とカードの見た目。ホーム・履歴・入力・カレンダー・設定・初回設定） | ✅ |
 | Pro 機能：目標に届く日（日付とグラフの点線の予測）、予測の幅（「3 月 8 日〜4 月 2 日ごろ」とグラフの薄い帯）、チートデーの提案（予定より 0.5 kg 以上先に進んでいるとき、ホームでアプリが「この 7 日のうち 2 日まで、維持カロリーまで」を提案。選んだ日はカレンダーに印。決まりは [docs/CHEAT_DAY.md](docs/CHEAT_DAY.md)）。最初の 1 か月は無料で試せて、終わったあとは中身をぼかして「Pro で見られます」と表示（[docs/PRO.md](docs/PRO.md)） | ✅ |
+| ホーム画面・ロック画面のウィジェット（最新の体重・目標まで・期限まで・直近 14 日の記録。無料。しくみは [docs/WIDGET.md](docs/WIDGET.md)） | 🚧 |
 | Pro 機能：キープモード（目標に届いたあと、目標 ±1.5 kg の範囲にキープ。範囲から出そうなとき・出たときにやさしく知らせ、維持カロリーの目安を出す。無料版では目標達成のときに Pro の案内。決まりは [docs/MAINTENANCE_MODE.md](docs/MAINTENANCE_MODE.md)） | ✅ |
 | 課金（買い切りの Pro）・英語版（年額サブスクは保留） | ⬜ |
 | Apple Watch 対応 | ⬜ |
@@ -67,17 +68,20 @@ WeightControl/                    ← リポジトリのルート
 │   │   ├── Reminders/            ← 記録のリマインド・ほめる通知の予定と文面
 │   │   ├── Pro/                  ← Pro 機能の計算（幅付きの予測、チートデーの提案）
 │   │   ├── Maintenance/          ← キープモードの計算（キープの範囲・状態）
+│   │   ├── Widget/               ← ウィジェットに出す数字のまとめ
 │   │   └── Demo/                 ← 動作確認用のデモデータ
 │   ├── Services/                 ← 外部の仕組み（HealthKit・通知）とのやり取り
 │   ├── Resources/                ← アプリに同梱するデータ（FoodCalories.json：食品のカロリー表）
 │   ├── Localizable.xcstrings     ← 画面の文言の一覧（String Catalog）
 │   └── Assets.xcassets           ← アイコン・色・画像
+├── Shared/                       ← アプリとウィジェットの両方に入るファイル（ウィジェットに渡す数字の形・保存・日付の計算）
+├── WeightForecastWidget/         ← ホーム画面・ロック画面のウィジェット（拡張のターゲット）
 ├── WeightControlAppTests/        ← 単体テスト（Swift Testing）
 ├── WeightControlAppUITests/      ← UI テスト（XCTest）
 └── .github/workflows/ci.yml      ← GitHub 上で自動ビルド＆テストする設定
 ```
 
-このプロジェクトは Xcode の「フォルダ同期」方式を使っているので、`WeightControlApp/` の下にファイルやフォルダを追加すると、Xcode のプロジェクトにも自動で反映されます。
+このプロジェクトは Xcode の「フォルダ同期」方式を使っているので、`WeightControlApp/` の下にファイルやフォルダを追加すると、Xcode のプロジェクトにも自動で反映されます（`Shared/` はアプリとウィジェットの両方、`WeightForecastWidget/` はウィジェットだけに入ります）。
 
 ## はじめかた
 
