@@ -17,7 +17,7 @@
 | 7 | HealthKit 連携（体重の読み書き・運動量の取得） | HealthKit | ✅ 完了（#11、初回設定で身長・生年月日・性別を引き継ぐ #21） |
 | 8 | 通知（記録のリマインド・ほめる通知） | UserNotifications | ✅ 完了（記録のリマインド #10、ほめる通知 #17：週 1 回のふり返りと節目のお祝い。初回設定で通知をオンにするか聞くページ #34） |
 | 9 | 免責表示（医療アドバイスではありません）と全体の仕上げ | SwiftUI | ほぼ完了（免責表示は初回設定と設定タブの「ご利用にあたって」。空の状態・VoiceOver・大きい文字・ダークモードはホーム #18・履歴 #20・設定 #21 で対応。アプリのアイコン「にっこり体重計」#24。App Store の説明文・プレビュー画像の下書きと申請前のチェックリスト、アプリ名「体重予報」・バンドル ID `com.utahengineering.weightforecast`・iPhone だけで出す #29（[APP_STORE.md](APP_STORE.md)）。ビルド時の警告の解消 #33。使ってみて見つかった点の手直し #34（[WEIGHT_RECORDS.md](WEIGHT_RECORDS.md)）。残りは、プレビュー画像を本物の画面に差し替えることと、App Store に出す前の全体の見直し） |
-| 10 | Apple Watch 対応：Watch から体重を記録・目標まで・期限まで・文字盤のコンプリケーション | SwiftUI（watchOS）、WatchConnectivity、WidgetKit | 🚧 画面まで作った（仕様 #37、実装 #38。Mac での署名と動作確認がまだ。[WATCH.md](WATCH.md)） |
+| 10 | Apple Watch 対応：Watch から体重を記録・目標まで・期限まで・文字盤のコンプリケーション | SwiftUI（watchOS）、WatchConnectivity、WidgetKit | 🚧 画面まで作った（仕様 #37、実装 #39。Mac での署名と動作確認がまだ。[WATCH.md](WATCH.md)） |
 | 11 | 課金のしくみ：買い切りの Pro・投げ銭・購入の復元 | StoreKit 2 | 未着手 |
 | 12 | Pro 機能：目標に届く日・チートデーの提案・幅付きの達成予測と、1 か月の無料お試し | Logic、SwiftUI | 画面まで完成（幅付きの予測：計算 #16、画面 #23。チートデーの提案：#27 で「日を選ぶ計画」から「アプリが提案する」形に作り直し。仕様 [CHEAT_DAY.md](CHEAT_DAY.md)。目標に届く日と点線の予測も Pro に、1 か月の無料お試しと、お試し後に中身をぼかす表示を追加 #31。仕様 [PRO.md](PRO.md)） |
 | 13 | 英語版（画面の文言・食品名・App Store の説明文） | String Catalog | 未着手 |
@@ -83,7 +83,7 @@
 | #33 | ビルド時の警告を解消（`LinearRegression` に `nonisolated`）、`Localizable.xcstrings` をビルド結果に合わせて更新 |
 | #34 | 使ってみて見つかった点の手直し（[WEIGHT_RECORDS.md](WEIGHT_RECORDS.md)）：ホームの「目標まで」を最新の体重から出し、通りこしたら「達成」。入力画面で前回と 2.0 kg 以上ちがえば確認、同じ日の記録があれば一言。初回設定に通知のページ |
 | #37 | フェーズ 10 の仕様：[WATCH.md](WATCH.md)（Watch でできること、WatchConnectivity での受け渡し、コンプリケーションの種類） |
-| #38 | フェーズ 10：Apple Watch アプリ（最新の体重・目標まで・期限まで・連続記録、Digital Crown で記録）とコンプリケーション 4 種類（目標まで・期限まで・連続記録・まとめ）。iPhone はウィジェットと同じスナップショットを WatchConnectivity で送り、Watch の記録を `WeightEntry` に足す。ターゲット `WeightForecastWatch`・`WeightForecastWatchWidgetExtension` |
+| #39 | フェーズ 10：Apple Watch アプリ（最新の体重・目標まで・期限まで・連続記録、Digital Crown で記録）とコンプリケーション 4 種類（目標まで・期限まで・連続記録・まとめ）。iPhone はウィジェットと同じスナップショットを WatchConnectivity で送り、Watch の記録を `WeightEntry` に足す。ターゲット `WeightForecastWatch`・`WeightForecastWatchWidgetExtension` |
 | #35 | フェーズ 16：ホーム画面（小・中）とロック画面（長方形・丸・1 行）のウィジェット。アプリが表示用の数字（`WidgetSnapshot`）を App Group に書き、ウィジェットは読むだけ。「目標まで」はホームと同じ `GoalDistanceCalculator`。拡張のターゲット `WeightForecastWidgetExtension`、仕様 [WIDGET.md](WIDGET.md) |
 
 ## できているロジック（Logic/）
@@ -188,7 +188,7 @@
 
 **いま進めていること**
 
-- Apple Watch 対応（フェーズ 10）：App Store に出す準備より先に進める（2026-11-27 に Yuta が決定）。仕様 #37、実装 #38。マージしたら Yuta の Mac で署名（Watch の 2 つのターゲットの Team と App Groups）を確かめ、Watch のシミュレーターか実機で動かす（手順は [WATCH.md](WATCH.md) の「Mac で Yuta がすること」）。
+- Apple Watch 対応（フェーズ 10）：App Store に出す準備より先に進める（2026-11-27 に Yuta が決定）。仕様 #37、実装 #39。マージしたら Yuta の Mac で署名（Watch の 2 つのターゲットの Team と App Groups）を確かめ、Watch のシミュレーターか実機で動かす（手順は [WATCH.md](WATCH.md) の「Mac で Yuta がすること」）。
 
 **Mac で確かめること**
 
